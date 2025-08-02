@@ -1,0 +1,8 @@
+[gd_resource type="Theme" load_steps=2 format=3 uid="uid://fq2raaxr7bq2"]
+
+[ext_resource type="FontFile" uid="uid://bve6tao483hq3" path="res://Arts/Fonts/MiSans-Normal.ttf" id="1_ultyo"]
+
+[resource]
+default_font = ExtResource("1_ultyo")
+default_font_size = 30
+VBoxContainer/constants/separation = 4
