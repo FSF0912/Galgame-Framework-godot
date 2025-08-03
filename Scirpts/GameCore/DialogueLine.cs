@@ -46,6 +46,11 @@ namespace VisualNovel
         public void Interrupt(DialogueManager dm);
     }
 
+    public interface AnimationCommand : IDialogueCommand
+    {
+        public int ID { get; }
+    }
+
     public struct SpeakerLine : IDialogueCommand
     {
         public string SpeakerName;
@@ -189,36 +194,28 @@ namespace VisualNovel
             if (audioType == AudioType.Voice && GlobalSettings.SkipVoice) dm.StopVoice();
         }
 
-        public void Skip(DialogueManager dm)
-        {
-            throw new System.NotImplementedException();
-        }
+        public void Skip(DialogueManager dm) { }
     }
+
+    #region Animation
 
     public struct AnimationLine : IDialogueCommand
     {
-        public int ID;
+        public AnimationCommand[] animations;
 
-        public AnimationLine(int id)
+        public AnimationLine(AnimationCommand[] animations)
         {
-            ID = id;
+            this.animations = animations;
         }
 
         public void Execute(DialogueManager dm)
         {
-            if (dm.SceneActiveTextures.TryGetValue(ID, out var target))
-            {
-
-            }
-            else
-            {
-                GD.PrintErr("AnimationLine: Texture with ID " + ID + " not found.");
-            }
+            throw new System.NotImplementedException();
         }
 
         public void Interrupt(DialogueManager dm)
         {
-
+            throw new System.NotImplementedException();
         }
 
         public void Skip(DialogueManager dm)
@@ -226,4 +223,42 @@ namespace VisualNovel
             throw new System.NotImplementedException();
         }
     }
+
+    public struct SingleAnimation : AnimationCommand
+    {
+        public int ID { get; }
+        public float FadeTime;
+        public float TargetFading;
+
+        public SingleAnimation(int id, float targetFading)
+        {
+            ID = id;
+            FadeTime = GlobalSettings.AnimationDefaultTime;
+            TargetFading = targetFading;
+        }
+
+        public SingleAnimation(int id, float fadeTime, float targetFading)
+        {
+            ID = id;
+            FadeTime = fadeTime;
+            TargetFading = targetFading;
+        }
+
+        public void Execute(DialogueManager dm)
+        {
+            throw new System.NotImplementedException();
+        }
+
+        public void Skip(DialogueManager dm)
+        {
+            throw new System.NotImplementedException();
+        }
+
+        public void Interrupt(DialogueManager dm)
+        {
+            throw new System.NotImplementedException();
+        }
+    }
+
+    #endregion Animation
 }

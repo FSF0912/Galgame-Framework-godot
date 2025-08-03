@@ -3,7 +3,7 @@ using System;
 
 public partial class CrossFadeTextureRect : TextureRect
 {
-    [Export] public float FadeDuration = 1.0f;
+    float FadeDuration;
     
     private ShaderMaterial _shaderMat;
     private Tween _tween;
@@ -49,6 +49,7 @@ public partial class CrossFadeTextureRect : TextureRect
         _shaderMat.SetShaderParameter("progress", 0.0f);
 
         Material = _shaderMat;
+        FadeDuration = global::GlobalSettings.AnimationDefaultTime;
     }
     
     private static void CheckEmptyTexture()
