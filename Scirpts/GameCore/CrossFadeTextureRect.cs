@@ -6,7 +6,7 @@ public partial class CrossFadeTextureRect : TextureRect
     float FadeDuration;
     
     private ShaderMaterial _shaderMat;
-    private Tween _tween;
+    private Tween _crossfadeTween;
     private Texture2D _nextTex;
     private bool _willDeleted;
 
@@ -88,13 +88,13 @@ public partial class CrossFadeTextureRect : TextureRect
         
         _nextTex = newTexture;
         
-        _tween = CreateTween();
+        _crossfadeTween = CreateTween();
         
-        _tween.SetEase(Tween.EaseType.Out);
-        _tween.SetTrans(Tween.TransitionType.Linear);
-        _tween.TweenMethod(Callable.From<float>(SetProgress), 0.0f, 1.0f, duration);
+        _crossfadeTween.SetEase(Tween.EaseType.Out);
+        _crossfadeTween.SetTrans(Tween.TransitionType.Linear);
+        _crossfadeTween.TweenMethod(Callable.From<float>(SetProgress), 0.0f, 1.0f, duration);
         
-        _tween.Finished += OnTweenFinished;
+        _crossfadeTween.Finished += OnTweenFinished;
     }
 
     public void SetTextureWithFade(Texture2D newTexture, bool Immediately = false)
@@ -114,13 +114,13 @@ public partial class CrossFadeTextureRect : TextureRect
         _shaderMat.SetShaderParameter("next_tex", newTexture);
         
         _nextTex = newTexture;
-        _tween = CreateTween();
+        _crossfadeTween = CreateTween();
 
-        _tween.SetEase(Tween.EaseType.Out);
-        _tween.SetTrans(Tween.TransitionType.Linear);
-        _tween.TweenMethod(Callable.From<float>(SetProgress), 0.0f, 1.0f, FadeDuration);
+        _crossfadeTween.SetEase(Tween.EaseType.Out);
+        _crossfadeTween.SetTrans(Tween.TransitionType.Linear);
+        _crossfadeTween.TweenMethod(Callable.From<float>(SetProgress), 0.0f, 1.0f, FadeDuration);
 
-        _tween.Finished += OnTweenFinished;
+        _crossfadeTween.Finished += OnTweenFinished;
     }
 
     public void ClearTexture(bool delete = false, bool Immediately = false)
@@ -145,19 +145,19 @@ public partial class CrossFadeTextureRect : TextureRect
         _shaderMat.SetShaderParameter("next_tex", EmptyTex);
 
         _nextTex = EmptyTex;
-        _tween = CreateTween();
+        _crossfadeTween = CreateTween();
 
-        _tween.SetEase(Tween.EaseType.Out);
-        _tween.SetTrans(Tween.TransitionType.Linear);
-        _tween.TweenMethod(Callable.From<float>(SetProgress), 0.0f, 1.0f, FadeDuration);
+        _crossfadeTween.SetEase(Tween.EaseType.Out);
+        _crossfadeTween.SetTrans(Tween.TransitionType.Linear);
+        _crossfadeTween.TweenMethod(Callable.From<float>(SetProgress), 0.0f, 1.0f, FadeDuration);
 
-        _tween.Finished += OnTweenFinished;
+        _crossfadeTween.Finished += OnTweenFinished;
 
 
         if (delete)
         {
             _willDeleted = true;
-            _tween.Finished += Delete;
+            _crossfadeTween.Finished += Delete;
         }
     }
 
@@ -190,17 +190,17 @@ public partial class CrossFadeTextureRect : TextureRect
     {
         if (IsTweenActive())
         {
-            if (_tween.IsRunning())
+            if (_crossfadeTween.IsRunning())
             {
-                _tween.Finished -= OnTweenFinished;
-                _tween.Kill();
+                _crossfadeTween.Finished -= OnTweenFinished;
+                _crossfadeTween.Kill();
             }
         }
-        _tween = null;
+        _crossfadeTween = null;
     }
     
     private bool IsTweenActive() => 
-        _tween != null && IsInstanceValid(_tween);
+        _crossfadeTween != null && IsInstanceValid(_crossfadeTween);
     
     private void SetProgress(float value) => 
         _shaderMat.SetShaderParameter("progress", value);

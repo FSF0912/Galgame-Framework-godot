@@ -1,10 +1,10 @@
 [gd_scene load_steps=11 format=4 uid="uid://b0dbi2axmu56c"]
 
-[ext_resource type="Script" uid="uid://cq4cnx5k3s7rd" path="res://Scirpts/DialogueManager.cs" id="1_nxw56"]
-[ext_resource type="Script" uid="uid://clwik8446tbcn" path="res://Scirpts/TypeWriter.cs" id="2_5npg8"]
+[ext_resource type="Script" uid="uid://cq4cnx5k3s7rd" path="res://Scirpts/GameCore/DialogueManager.cs" id="1_nxw56"]
+[ext_resource type="Script" uid="uid://clwik8446tbcn" path="res://Scirpts/GameCore/TypeWriter.cs" id="2_5npg8"]
 [ext_resource type="FontFile" uid="uid://bve6tao483hq3" path="res://Arts/Fonts/MiSans-Normal.ttf" id="4_nxw56"]
 [ext_resource type="FontFile" uid="uid://dhltf2252erdj" path="res://Arts/Fonts/MiSans-Demibold.ttf" id="5_0cn3g"]
-[ext_resource type="Script" uid="uid://28dulq8q61pw" path="res://Scirpts/CrossFadeTextureRect.cs" id="5_gn3x6"]
+[ext_resource type="Script" uid="uid://28dulq8q61pw" path="res://Scirpts/GameCore/CrossFadeTextureRect.cs" id="5_gn3x6"]
 
 [sub_resource type="Image" id="Image_0cn3g"]
 data = {
@@ -629,7 +629,7 @@ variation_embolden = 1.2
 [node name="Node2D" type="Node2D" node_paths=PackedStringArray("SpeakerNameLabel", "typeWriter", "BackGroundTexture", "TextureContainer", "BranchContainer")]
 script = ExtResource("1_nxw56")
 SpeakerNameLabel = NodePath("DialogueDisplayArea/SpeakerName")
-typeWriter = NodePath("")
+typeWriter = NodePath("DialogueDisplayArea/RichTextLabel")
 BackGroundTexture = NodePath("BackGroundTexture")
 TextureContainer = NodePath("TextureContainer")
 BranchContainer = NodePath("BranchContainer")
@@ -659,10 +659,7 @@ offset_bottom = 54.0
 theme_override_constants/line_spacing = 0
 theme_override_fonts/font = ExtResource("5_0cn3g")
 theme_override_font_sizes/font_size = 40
-text = "Alan Walker
-"
 max_lines_visible = 1
-visible_ratio = -0.0833333
 
 [node name="RichTextLabel" type="RichTextLabel" parent="DialogueDisplayArea"]
 layout_mode = 0
