@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using Godot;
-using VisualNovel;
 
 namespace VisualNovel
 {
@@ -143,10 +142,10 @@ namespace VisualNovel
                 switch (textureMode)
                 {
                     case TextureMode.Switch:
-                        target.SetTextureWithFade(targetTexture, true);
+                        target.SetTextureWithFade(targetTexture, immediate:true);
                         break;
                     case TextureMode.Clear:
-                        target.SetTextureWithFade(CrossFadeTextureRect.EmptyTex, true);
+                        target.SetTextureWithFade(CrossFadeTextureRect.EmptyTex, immediate:true);
                         break;
                     case TextureMode.Delete:
                         dm.SceneActiveTextures.Remove(ID);

@@ -1,236 +1,228 @@
 using Godot;
-using System;
 
-public partial class CrossFadeTextureRect : TextureRect
+namespace VisualNovel
 {
-    float FadeDuration;
-    
-    private ShaderMaterial _shaderMat;
-    private Tween _crossfadeTween;
-    private Texture2D _nextTex;
-    private bool _willDeleted;
-
-    public static Texture2D EmptyTex { get; private set; }
-
-    public CrossFadeTextureRect()
+    public class TextureInitParams
     {
-        CheckEmptyTexture();
-        Texture = EmptyTex;
-    }
+        public Vector2 position = Vector2.Zero;
+        public float rotation_degrees = 0f;
+        public Vector2 scale = Vector2.One;
+        public TextureRect.ExpandModeEnum expandMode = TextureRect.ExpandModeEnum.IgnoreSize;
+        public TextureRect.StretchModeEnum stretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
+        public Control.LayoutPreset layoutPreset = Control.LayoutPreset.TopLeft;
 
-    public CrossFadeTextureRect(Texture2D target)
-    {
-        Texture = target;
-    }
-
-    public override void _Ready()
-    {
-        _shaderMat = new ShaderMaterial();
-        _shaderMat.Shader = new Shader()
+        public TextureInitParams(Vector2 position, float rotation_degrees, Vector2 scale,
+            TextureRect.ExpandModeEnum expandMode, TextureRect.StretchModeEnum stretchMode,
+            Control.LayoutPreset layoutPreset = Control.LayoutPreset.TopLeft)
         {
-            Code = @"
-                shader_type canvas_item;
-                
-                uniform sampler2D current_tex;
-                uniform sampler2D next_tex;
-                uniform float progress : hint_range(0, 1);
-                
-                void fragment() {
-                    vec4 curr = texture(current_tex, UV);
-                    vec4 next = texture(next_tex, UV);
-                    COLOR = mix(curr, next, progress);
-                }
-            "
-        };
-        CheckEmptyTexture();
-
-        _shaderMat.SetShaderParameter("current_tex", Texture ?? EmptyTex);
-        _shaderMat.SetShaderParameter("next_tex", EmptyTex);
-        _shaderMat.SetShaderParameter("progress", 0.0f);
-
-        Material = _shaderMat;
-        FadeDuration = global::GlobalSettings.AnimationDefaultTime;
-    }
-    
-    private static void CheckEmptyTexture()
-    {
-        if (EmptyTex == null || !IsInstanceValid(EmptyTex))
-        {
-            CreateEmptyTexture();
-        }
-    }
-    
-    private static void CreateEmptyTexture()
-    {
-        Image img = Image.CreateEmpty(1, 1, false, Image.Format.Rgba8);
-        img.Fill(Colors.Transparent);
-        EmptyTex = ImageTexture.CreateFromImage(img);
-    }
-    
-    /// <summary>
-    /// 使用交叉淡化效果设置新纹理
-    /// </summary>
-    public void SetTextureWithFade(Texture2D newTexture, float duration, bool Immediately = false)
-    {
-        if (Immediately)
-        {
-            SetTextureImmediately(newTexture);
-            return;
+            this.position = position;
+            this.rotation_degrees = rotation_degrees;
+            this.scale = scale;
+            this.expandMode = expandMode;
+            this.stretchMode = stretchMode;
+            this.layoutPreset = layoutPreset;
         }
 
-        if (newTexture == null || Texture == newTexture || _willDeleted) return;
-        
-        ClearTween();
-        CheckEmptyTexture();
-        
-        _shaderMat.SetShaderParameter("current_tex", Texture ?? EmptyTex);
-        _shaderMat.SetShaderParameter("next_tex", newTexture);
-        
-        _nextTex = newTexture;
-        
-        _crossfadeTween = CreateTween();
-        
-        _crossfadeTween.SetEase(Tween.EaseType.Out);
-        _crossfadeTween.SetTrans(Tween.TransitionType.Linear);
-        _crossfadeTween.TweenMethod(Callable.From<float>(SetProgress), 0.0f, 1.0f, duration);
-        
-        _crossfadeTween.Finished += OnTweenFinished;
+        /// <summary>
+        /// position x阈值：约0-640 y阈值：约50-1000
+        /// 
+        /// </summary>
+        public static TextureInitParams DefaultPortraitNormalDistance = new (
+            position: new (0, 150),
+            rotation_degrees: 0f,
+            scale: new Vector2(1300f, 2000f),
+            expandMode: TextureRect.ExpandModeEnum.IgnoreSize,
+            stretchMode: TextureRect.StretchModeEnum.KeepAspectCentered,
+            layoutPreset: Control.LayoutPreset.TopLeft
+        );
     }
 
-    public void SetTextureWithFade(Texture2D newTexture, bool Immediately = false)
+    public partial class CrossFadeTextureRect : TextureRect
     {
-        if (Immediately)
+        public static Texture2D EmptyTex;
+        private ShaderMaterial _shaderMaterial;
+        private Tween _activeTween;
+        private Texture2D _nextTexture;
+        private bool _pendingDeletion;
+
+        public float FadeDuration;
+
+        public CrossFadeTextureRect(TextureInitParams initParams) : this(null, initParams) { }
+
+        public CrossFadeTextureRect(Texture2D initialTexture, TextureInitParams initParams = default)
         {
-            SetTextureImmediately(newTexture);
-            return;
+            Texture = initialTexture ?? GetOrCreateEmptyTexture();
+            Position = initParams.position;
+            RotationDegrees = initParams.rotation_degrees;
+            Scale = initParams.scale;
+            ExpandMode = initParams.expandMode;
+            StretchMode = initParams.stretchMode;
+            SetAnchorsAndOffsetsPreset(initParams.layoutPreset, LayoutPresetMode.KeepSize);
         }
 
-        if (newTexture == null || Texture == newTexture || _willDeleted) return;
-
-        ClearTween();
-        CheckEmptyTexture();
-
-        _shaderMat.SetShaderParameter("current_tex", Texture ?? EmptyTex);
-        _shaderMat.SetShaderParameter("next_tex", newTexture);
-        
-        _nextTex = newTexture;
-        _crossfadeTween = CreateTween();
-
-        _crossfadeTween.SetEase(Tween.EaseType.Out);
-        _crossfadeTween.SetTrans(Tween.TransitionType.Linear);
-        _crossfadeTween.TweenMethod(Callable.From<float>(SetProgress), 0.0f, 1.0f, FadeDuration);
-
-        _crossfadeTween.Finished += OnTweenFinished;
-    }
-
-    public void ClearTexture(bool delete = false, bool Immediately = false)
-    {
-        if (Immediately && delete)
+        public override void _Ready()
         {
-            QueueFree();
-            return;
-        }
-        else if (Immediately)
-        {
-            SetTextureImmediately(EmptyTex);
-            return;
+            FadeDuration = GlobalSettings.AnimationDefaultTime;
+            InitializeShaderMaterial();
         }
 
-        if (Texture == EmptyTex || _willDeleted) return;
-
-        ClearTween();
-        CheckEmptyTexture();
-
-        _shaderMat.SetShaderParameter("current_tex", Texture ?? EmptyTex);
-        _shaderMat.SetShaderParameter("next_tex", EmptyTex);
-
-        _nextTex = EmptyTex;
-        _crossfadeTween = CreateTween();
-
-        _crossfadeTween.SetEase(Tween.EaseType.Out);
-        _crossfadeTween.SetTrans(Tween.TransitionType.Linear);
-        _crossfadeTween.TweenMethod(Callable.From<float>(SetProgress), 0.0f, 1.0f, FadeDuration);
-
-        _crossfadeTween.Finished += OnTweenFinished;
-
-
-        if (delete)
+        private void InitializeShaderMaterial()
         {
-            _willDeleted = true;
-            _crossfadeTween.Finished += Delete;
-        }
-    }
+            if (_shaderMaterial != null) return;
 
-    private void SetTextureImmediately(Texture2D newTexture)
-    {
-        if (newTexture == null || Texture == newTexture) return;
-
-        ClearTween();
-
-        Texture = newTexture;
-        _shaderMat.SetShaderParameter("current_tex", Texture);
-        _shaderMat.SetShaderParameter("progress", 0.0f);
-        
-        _nextTex = null;
-    }
-    
-    /// <summary>
-    /// 立即完成当前淡化过渡
-    /// </summary>
-    public void CompleteFade()
-    {
-        if (IsTweenActive())
-        {
-            SetProgress(1.0f);
-            OnTweenFinished();
-        }
-    }
-    
-    private void ClearTween()
-    {
-        if (IsTweenActive())
-        {
-            if (_crossfadeTween.IsRunning())
+            _shaderMaterial = new ShaderMaterial
             {
-                _crossfadeTween.Finished -= OnTweenFinished;
-                _crossfadeTween.Kill();
+                Shader = new Shader
+                {
+                    Code = @"
+                    shader_type canvas_item;
+                    uniform sampler2D current_tex;
+                    uniform sampler2D next_tex;
+                    uniform float progress : hint_range(0, 1);
+                    
+                    void fragment() {
+                        vec4 curr = texture(current_tex, UV);
+                        vec4 next = texture(next_tex, UV);
+                        COLOR = mix(curr, next, progress);
+                    }
+                "
+                }
+            };
+
+            Material = _shaderMaterial;
+            ResetShaderParameters();
+        }
+
+        public void SetTextureWithFade(Texture2D newTexture, float duration = -1, bool immediate = false)
+        {
+            if (immediate)
+            {
+                SetTextureImmediately(newTexture);
+                return;
+            }
+
+            if (newTexture == null || Texture == newTexture || _pendingDeletion)
+                return;
+
+            ClearActiveTween();
+            InitializeShaderMaterial();
+
+            _shaderMaterial.SetShaderParameter("current_tex", Texture ?? GetOrCreateEmptyTexture());
+            _shaderMaterial.SetShaderParameter("next_tex", newTexture);
+
+            _nextTexture = newTexture;
+
+            _activeTween = CreateTween();
+            _activeTween.SetEase(Tween.EaseType.Out);
+            _activeTween.SetTrans(Tween.TransitionType.Linear);
+            _activeTween.TweenMethod(Callable.From<float>(SetProgress), 0.0f, 1.0f, duration > 0 ? duration : FadeDuration);
+            _activeTween.Finished += OnFadeComplete;
+        }
+
+        public void ClearTexture(bool deleteAfterFade = false, bool immediate = false)
+        {
+            SetTextureWithFade(GetOrCreateEmptyTexture(), immediate: immediate);
+
+            if (deleteAfterFade)
+            {
+                if (immediate)
+                {
+                    QueueFree();
+                }
+                else
+                {
+                    _pendingDeletion = true;
+                    _activeTween?.Disconnect(Tween.SignalName.Finished, Callable.From(OnFadeComplete));
+                    _activeTween?.Connect(Tween.SignalName.Finished, Callable.From(DeleteAfterFade));
+                }
             }
         }
-        _crossfadeTween = null;
-    }
-    
-    private bool IsTweenActive() => 
-        _crossfadeTween != null && IsInstanceValid(_crossfadeTween);
-    
-    private void SetProgress(float value) => 
-        _shaderMat.SetShaderParameter("progress", value);
-    
-    private void OnTweenFinished()
-    {
-        if (_nextTex == null) return;
-        
-        Texture = _nextTex;
-        CheckEmptyTexture();
-        
-        _shaderMat.SetShaderParameter("current_tex", Texture ?? EmptyTex);
-        _shaderMat.SetShaderParameter("next_tex", EmptyTex);
-        _shaderMat.SetShaderParameter("progress", 0.0f);
-        
-        ClearTween();
-    }
 
-    private void Delete()
-    {
-        QueueFree();
-    }
-
-    public override void _Notification(int what)
-    {
-        base._Notification(what);
-        if (what == NotificationPredelete)
+        /// <summary>
+        /// 立即设置纹理（无过渡效果）
+        /// </summary>
+        public void SetTextureImmediately(Texture2D newTexture)
         {
-            ClearTween();
-            _nextTex = null;
+            if (newTexture == null || Texture == newTexture) return;
+
+            ClearActiveTween();
+            InitializeShaderMaterial();
+
+            Texture = newTexture;
+            ResetShaderParameters();
+            _nextTexture = null;
+        }
+
+        /// <summary>
+        /// 立即完成当前淡化过渡
+        /// </summary>
+        public void CompleteFade()
+        {
+            if (!IsTweenActive()) return;
+
+            SetProgress(1.0f);
+            OnFadeComplete();
+        }
+
+        private void SetProgress(float value) =>
+            _shaderMaterial?.SetShaderParameter("progress", value);
+
+        private void OnFadeComplete()
+        {
+            if (_nextTexture == null) return;
+
+            Texture = _nextTexture;
+            ResetShaderParameters();
+            ClearActiveTween();
+        }
+
+        private void DeleteAfterFade()
+        {
+            ClearActiveTween();
+            QueueFree();
+        }
+
+        private void ClearActiveTween()
+        {
+            if (!IsTweenActive()) return;
+
+            _activeTween.Finished -= OnFadeComplete;
+            _activeTween.Finished -= DeleteAfterFade;
+            _activeTween.Kill();
+            _activeTween = null;
+        }
+
+        private bool IsTweenActive() =>
+            _activeTween != null && IsInstanceValid(_activeTween);
+
+        private void ResetShaderParameters()
+        {
+            if (_shaderMaterial == null) return;
+
+            _shaderMaterial.SetShaderParameter("current_tex", Texture ?? GetOrCreateEmptyTexture());
+            _shaderMaterial.SetShaderParameter("next_tex", GetOrCreateEmptyTexture());
+            _shaderMaterial.SetShaderParameter("progress", 0.0f);
+        }
+
+        private static Texture2D GetOrCreateEmptyTexture()
+        {
+            if (EmptyTex != null && IsInstanceValid(EmptyTex))
+                return EmptyTex;
+
+            var image = Image.CreateEmpty(1, 1, false, Image.Format.Rgba8);
+            image.Fill(Colors.Transparent);
+            EmptyTex = ImageTexture.CreateFromImage(image);
+            return EmptyTex;
+        }
+
+        public override void _Notification(int what)
+        {
+            base._Notification(what);
+            if (what == NotificationPredelete)
+            {
+                ClearActiveTween();
+                _nextTexture = null;
+            }
         }
     }
 }

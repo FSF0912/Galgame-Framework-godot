@@ -1,10 +1,11 @@
-[gd_scene load_steps=11 format=4 uid="uid://b0dbi2axmu56c"]
+[gd_scene load_steps=12 format=4 uid="uid://b0dbi2axmu56c"]
 
 [ext_resource type="Script" uid="uid://cq4cnx5k3s7rd" path="res://Scirpts/GameCore/DialogueManager.cs" id="1_nxw56"]
 [ext_resource type="Script" uid="uid://clwik8446tbcn" path="res://Scirpts/GameCore/TypeWriter.cs" id="2_5npg8"]
 [ext_resource type="FontFile" uid="uid://bve6tao483hq3" path="res://Arts/Fonts/MiSans-Normal.ttf" id="4_nxw56"]
 [ext_resource type="FontFile" uid="uid://dhltf2252erdj" path="res://Arts/Fonts/MiSans-Demibold.ttf" id="5_0cn3g"]
 [ext_resource type="Script" uid="uid://28dulq8q61pw" path="res://Scirpts/GameCore/CrossFadeTextureRect.cs" id="5_gn3x6"]
+[ext_resource type="Texture2D" uid="uid://btapy608nj8vk" path="res://test/yoshino.png" id="6_m2x0j"]
 
 [sub_resource type="Image" id="Image_0cn3g"]
 data = {
@@ -684,3 +685,16 @@ layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
+
+[node name="TextureRect" type="TextureRect" parent="."]
+offset_left = 428.0
+offset_top = 150.0
+offset_right = 1728.0
+offset_bottom = 2150.0
+texture = ExtResource("6_m2x0j")
+expand_mode = 1
+stretch_mode = 5
+script = ExtResource("5_gn3x6")
+
+[node name="AudioStreamPlayer2D" type="AudioStreamPlayer2D" parent="."]
+attenuation = 0.001
