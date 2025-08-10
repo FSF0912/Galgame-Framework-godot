@@ -39,6 +39,7 @@ namespace VisualNovel
 
     public partial class CrossFadeTextureRect : TextureRect
     {
+        [Signal] public delegate void FadeCompleteEventHandler();
         public static Texture2D EmptyTex;
         private ShaderMaterial _shaderMaterial;
         private Tween _activeTween;
@@ -63,10 +64,10 @@ namespace VisualNovel
         public override void _Ready()
         {
             FadeDuration = GlobalSettings.AnimationDefaultTime;
-            InitializeShaderMaterial();
+            InitShaderMaterial();
         }
 
-        private void InitializeShaderMaterial()
+        private void InitShaderMaterial()
         {
             if (_shaderMaterial != null) return;
 
@@ -90,7 +91,7 @@ namespace VisualNovel
             };
 
             Material = _shaderMaterial;
-            ResetShaderParameters();
+            ResetShaderParams();
         }
 
         public void SetTextureWithFade(Texture2D newTexture, float duration = -1, bool immediate = false)
@@ -105,7 +106,7 @@ namespace VisualNovel
                 return;
 
             ClearActiveTween();
-            InitializeShaderMaterial();
+            InitShaderMaterial();
 
             _shaderMaterial.SetShaderParameter("current_tex", Texture ?? GetOrCreateEmptyTexture());
             _shaderMaterial.SetShaderParameter("next_tex", newTexture);
@@ -138,18 +139,15 @@ namespace VisualNovel
             }
         }
 
-        /// <summary>
-        /// 立即设置纹理（无过渡效果）
-        /// </summary>
         public void SetTextureImmediately(Texture2D newTexture)
         {
             if (newTexture == null || Texture == newTexture) return;
 
             ClearActiveTween();
-            InitializeShaderMaterial();
+            InitShaderMaterial();
 
             Texture = newTexture;
-            ResetShaderParameters();
+            ResetShaderParams();
             _nextTexture = null;
         }
 
@@ -172,8 +170,9 @@ namespace VisualNovel
             if (_nextTexture == null) return;
 
             Texture = _nextTexture;
-            ResetShaderParameters();
+            ResetShaderParams();
             ClearActiveTween();
+            EmitSignal(SignalName.FadeComplete);
         }
 
         private void DeleteAfterFade()
@@ -195,7 +194,7 @@ namespace VisualNovel
         private bool IsTweenActive() =>
             _activeTween != null && IsInstanceValid(_activeTween);
 
-        private void ResetShaderParameters()
+        private void ResetShaderParams()
         {
             if (_shaderMaterial == null) return;
 
@@ -224,5 +223,11 @@ namespace VisualNovel
                 _nextTexture = null;
             }
         }
+
+        #region  Animation
+        [Signal] public delegate void AnimationCompleteEventHandler();
+        #endregion
+
+
     }
 }

@@ -628,6 +628,7 @@ base_font = SubResource("FontFile_gn3x6")
 variation_embolden = 1.2
 
 [node name="Node2D" type="Node2D" node_paths=PackedStringArray("SpeakerNameLabel", "typeWriter", "BackGroundTexture", "TextureContainer", "BranchContainer")]
+top_level = true
 script = ExtResource("1_nxw56")
 SpeakerNameLabel = NodePath("DialogueDisplayArea/SpeakerName")
 typeWriter = NodePath("DialogueDisplayArea/RichTextLabel")
