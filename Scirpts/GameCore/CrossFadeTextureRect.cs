@@ -39,6 +39,12 @@ namespace VisualNovel
 
     public partial class CrossFadeTextureRect : TextureRect
     {
+        public enum AnchorMode : byte
+        {
+            Local,
+            Global
+        }
+
         [Signal] public delegate void FadeCompleteEventHandler();
         public static Texture2D EmptyTex;
         private ShaderMaterial _shaderMaterial;
@@ -63,8 +69,20 @@ namespace VisualNovel
 
         public override void _Ready()
         {
+            base._Ready();
             FadeDuration = GlobalSettings.AnimationDefaultTime;
             InitShaderMaterial();
+            DialogueManager.Instance.ExecuteStart += CreateAnimTween;
+        }
+
+        public override void _ExitTree()
+        {
+            base._ExitTree();
+            DialogueManager.Instance.ExecuteStart -= CreateAnimTween;
+            ClearActiveTween();
+            _nextTexture = null;
+
+            _animationTween?.Kill();
         }
 
         private void InitShaderMaterial()
@@ -120,6 +138,34 @@ namespace VisualNovel
             _activeTween.Finished += OnFadeComplete;
         }
 
+        public void SetTextureByFading(Texture2D newTexture, float duration = -1, bool doubleTime = true)
+        {
+            if (newTexture == null || Texture == newTexture || _pendingDeletion)
+                return;
+
+            duration = duration <= 0 ? doubleTime ? FadeDuration : FadeDuration / 2 : doubleTime ? duration : duration / 2;
+
+            ClearActiveTween();
+            InitShaderMaterial();
+
+            _shaderMaterial.SetShaderParameter("current_tex", Texture ?? GetOrCreateEmptyTexture());
+            _shaderMaterial.SetShaderParameter("next_tex", EmptyTex);
+
+            _nextTexture = EmptyTex;
+
+            _activeTween = CreateTween();
+            _activeTween.SetEase(Tween.EaseType.Out);
+            _activeTween.SetTrans(Tween.TransitionType.Linear);
+            _activeTween.TweenMethod(Callable.From<float>(SetProgress), 0.0f, 1.0f, duration > 0 ? duration : FadeDuration);
+
+            GetTree().CreateTimer(duration).Timeout += () =>
+            {
+                _activeTween?.Kill();
+                _activeTween = null;
+                SetTextureWithFade(newTexture, duration);
+            };
+        }
+
         public void ClearTexture(bool deleteAfterFade = false, bool immediate = false)
         {
             SetTextureWithFade(GetOrCreateEmptyTexture(), immediate: immediate);
@@ -133,8 +179,8 @@ namespace VisualNovel
                 else
                 {
                     _pendingDeletion = true;
-                    _activeTween?.Disconnect(Tween.SignalName.Finished, Callable.From(OnFadeComplete));
-                    _activeTween?.Connect(Tween.SignalName.Finished, Callable.From(DeleteAfterFade));
+                    _activeTween.Finished -= OnFadeComplete;
+                    _activeTween.Finished += DeleteAfterFade;
                 }
             }
         }
@@ -214,20 +260,170 @@ namespace VisualNovel
             return EmptyTex;
         }
 
-        public override void _Notification(int what)
+        #region Animation
+        [Signal] public delegate void AnimationCompleteEventHandler();
+        Tween _animationTween;
+        Vector2 _originalPosition;
+
+        public void CreateAnimTween()
         {
-            base._Notification(what);
-            if (what == NotificationPredelete)
+            if (_animationTween != null && IsInstanceValid(_animationTween))
             {
-                ClearActiveTween();
-                _nextTexture = null;
+                _animationTween.Kill();
+            }
+
+            _animationTween = CreateTween();
+            _animationTween.SetParallel();
+            _animationTween.Finished += () =>
+            {
+                _animationTween = null;
+                EmitSignal(SignalName.AnimationComplete);
+            };
+        }
+
+        #region Animation/Transform
+        public void AddMove(Vector2 target, float duration, bool isRelative = false,
+                    Tween.TransitionType trans = Tween.TransitionType.Sine,
+                    Tween.EaseType ease = Tween.EaseType.InOut)
+        {
+            if (_animationTween == null || !IsInstanceValid(_animationTween))
+            {
+                CreateAnimTween();
+            }
+
+            if (isRelative)
+            {
+                _animationTween.TweenProperty(this, "position", Position + target, duration).SetTrans(trans).SetEase(ease);
+            }
+            else
+            {
+                _animationTween.TweenProperty(this, "position", target, duration).SetTrans(trans).SetEase(ease);
             }
         }
 
-        #region  Animation
-        [Signal] public delegate void AnimationCompleteEventHandler();
+        public void AddRotate(float degrees, float duration, AnchorMode anchorMode = AnchorMode.Local,
+                     Tween.TransitionType trans = Tween.TransitionType.Quart,
+                     Tween.EaseType ease = Tween.EaseType.Out)
+        {
+            if (_animationTween == null || !IsInstanceValid(_animationTween))
+            {
+                CreateAnimTween();
+            }
+
+            switch (anchorMode)
+            {
+                case AnchorMode.Local:
+                    _animationTween.TweenProperty(this, "rotation_degrees", degrees, duration).SetTrans(trans).SetEase(ease);
+                    break;
+
+                case AnchorMode.Global:
+                    // 通过中间节点实现世界空间旋转
+                    var pivot = new Node2D();
+                    pivot.Position = GlobalPosition;
+                    GetParent().AddChild(pivot);
+                    Reparent(pivot);
+
+                    _animationTween.TweenProperty(pivot, "rotation_degrees", degrees, duration)
+                        .SetTrans(trans).SetEase(ease)
+                    .Finished += () =>
+                    {
+                        GlobalPosition = pivot.GlobalPosition;
+                        Reparent(pivot.GetParent());
+                        pivot.QueueFree();
+                    };
+                    break;
+            }
+        }
+
+        public void AddScale(Vector2 scale, float duration,
+                   Tween.TransitionType trans = Tween.TransitionType.Sine,
+                   Tween.EaseType ease = Tween.EaseType.InOut)
+        {
+            if (_animationTween == null || !IsInstanceValid(_animationTween))
+            {
+                CreateAnimTween();
+            }
+
+            _animationTween.TweenProperty(this, "scale", scale, duration)
+                .SetTrans(trans).SetEase(ease);
+        }
+
+        public void AddShake(float intensity, float duration, float frequency = 10f,
+                    Tween.TransitionType trans = Tween.TransitionType.Elastic,
+                    Tween.EaseType ease = Tween.EaseType.Out)
+        {
+            if (_animationTween == null || !IsInstanceValid(_animationTween))
+            {
+                CreateAnimTween();
+            }
+
+            _originalPosition = Position;
+            float elapsed = 0f;
+
+            _animationTween.TweenMethod(Callable.From<float>((t) =>
+            {
+                elapsed += (float)GetProcessDeltaTime();
+                float offset = Mathf.Sin(elapsed * frequency * Mathf.Pi) * intensity;
+                Position = _originalPosition + new Vector2(offset, offset * 0.6f);
+                intensity *= 0.95f; // 随时间减弱
+            }), 0f, 1f, duration).
+            SetTrans(trans).
+            SetEase(ease).
+            Finished += () =>
+            {
+                Position = _originalPosition; // 恢复原位置
+            };
+
+
+        }
         #endregion
 
+        #region Animation/Color
+        public void AddColorTween(Color target, float duration,
+                         Tween.TransitionType trans = Tween.TransitionType.Linear,
+                         Tween.EaseType ease = Tween.EaseType.In)
+        {
+            if (_animationTween == null || !IsInstanceValid(_animationTween))
+            {
+                CreateAnimTween();
+            }
+
+            _animationTween.TweenProperty(this, "modulate", target, duration)
+                .SetTrans(trans).SetEase(ease);
+        }
+
+        public void AddFade(float alpha, float duration,
+                  Tween.TransitionType trans = Tween.TransitionType.Linear,
+                  Tween.EaseType ease = Tween.EaseType.In)
+        {
+            if (_animationTween == null || !IsInstanceValid(_animationTween))
+            {
+                CreateAnimTween();
+            }
+
+            var targetColor = Modulate;
+            targetColor.A = alpha;
+
+            _animationTween.TweenProperty(this, "modulate", targetColor, duration)
+                .SetTrans(trans).SetEase(ease);
+        }
+
+        public void CompleteAnimations()
+        {
+            if (_animationTween != null && IsInstanceValid(_animationTween))
+            {
+                _animationTween.CustomStep(1000f);
+                _animationTween.EmitSignal(Tween.SignalName.Finished);
+                _animationTween.Kill();
+                _animationTween = null;
+            }
+
+            EmitSignal(SignalName.AnimationComplete);
+        }
+        
+        #endregion
+
+        #endregion
 
     }
 }

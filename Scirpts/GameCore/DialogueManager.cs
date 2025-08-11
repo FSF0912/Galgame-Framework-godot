@@ -12,8 +12,14 @@ namespace VisualNovel
         BranchChoice
     }
 
-    public partial class DialogueManager : Node
+    public partial class DialogueManager : Node2D
     {
+        public static DialogueManager Instance;
+
+        [Signal] public delegate void ExecuteStartEventHandler();
+        [Signal] public delegate void ExecuteEndEventHandler();
+
+
         public GameStatus gameStatus = GameStatus.WaitingForInput;
         [ExportGroup("References")]
         [Export] public Label SpeakerNameLabel;
@@ -30,12 +36,25 @@ namespace VisualNovel
         DialogueLine _currentDialogueLine;
         public readonly Dictionary<int, CrossFadeTextureRect> SceneActiveTextures = [];
 
+        public override void _EnterTree()
+        {
+            base._EnterTree();
+            if (Instance != null)
+            {
+                QueueFree();
+                return;
+            }
+
+            Instance = this;
+        }
+
         public override void _Ready()
         {
             base._Ready();
             _BGMPlayer = new AudioStreamPlayer { Name = "BGMPlayer" };
             _VoicePlayer = new AudioStreamPlayer { Name = "VoicePlayer" };
             _SEPlayer = new AudioStreamPlayer { Name = "SEPlayer" };
+            SceneActiveTextures.Clear();
 
             AddChild(_BGMPlayer);
             AddChild(_VoicePlayer);
@@ -43,6 +62,18 @@ namespace VisualNovel
 
             SceneActiveTextures.Add(-100, BackGroundTexture);
             SceneActiveTextures.Add(-200, AvatarTexture);
+
+            typeWriter.StartTyping += EnableDialogueSign;
+            typeWriter.OnComplete += DisableDialogueSign;
+        }
+
+
+        public override void _ExitTree()
+        {
+            base._ExitTree();
+            typeWriter.StartTyping -= EnableDialogueSign;
+            typeWriter.OnComplete -= DisableDialogueSign;
+            Instance = null;
         }
 
         public override void _Input(InputEvent @event)
@@ -64,13 +95,15 @@ namespace VisualNovel
             }
 
 
-            void HandleDialogue() {
+            void HandleDialogue()
+            {
                 if (gameStatus == GameStatus.PerformingAction)
                     InterruptCurrentDialogue();
                 else if (gameStatus == GameStatus.WaitingForInput)
                     NextDialogue();
             }
         }
+
 
         public void CreateTexture(int id, Texture2D defaultTex = null, bool immediate = false)
         {
@@ -85,6 +118,9 @@ namespace VisualNovel
             if (defaultTex != null)
                 textureRef.SetTextureWithFade(defaultTex, immediate: immediate);
         }
+
+        private void EnableDialogueSign() { }
+        private void DisableDialogueSign() { }
 
         #region Audio Control
 
@@ -229,7 +265,10 @@ namespace VisualNovel
         {
             if (_pendingTasks > 0) _pendingTasks--;
             if (_pendingTasks == 0 && gameStatus == GameStatus.PerformingAction)
-                    gameStatus = GameStatus.WaitingForInput;
+            {
+                EmitSignal(SignalName.ExecuteEnd);
+                gameStatus = GameStatus.WaitingForInput;
+            }
         }
 
         private void InterruptCurrentDialogue()
@@ -242,6 +281,7 @@ namespace VisualNovel
         public void NextDialogue()
         {
             if (_currentDialogueLine == null) return;
+            EmitSignal(SignalName.ExecuteStart);
 
             InterruptCurrentDialogue();
             //switch to next dialogue line

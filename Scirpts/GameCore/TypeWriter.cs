@@ -8,6 +8,7 @@ namespace VisualNovel
         [Export] public float PerCharSpeed = 0.03f;
         public bool IsTyping { get; private set; }
 
+        [Signal] public delegate void StartTypingEventHandler();
         [Signal] public delegate void OnCompleteEventHandler();
         [Signal] public delegate void OnInterruptEventHandler();
 
@@ -71,6 +72,7 @@ namespace VisualNovel
             _tween.SetTrans(Tween.TransitionType.Linear);
             _tween.TweenProperty(this, "visible_ratio", 1, duration * text.Length);
             _tween.Finished += OnTweenCompleted;
+            EmitSignal(SignalName.StartTyping);
         }
 
         private void OnTweenCompleted()
@@ -127,8 +129,8 @@ namespace VisualNovel
 
         public override void _ExitTree()
         {
-            StopTween();
             base._ExitTree();
+            StopTween();
         }
     }
 
