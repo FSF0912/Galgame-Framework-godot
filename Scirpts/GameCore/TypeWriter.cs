@@ -71,22 +71,15 @@ namespace VisualNovel
             _tween = CreateTween();
             _tween.SetTrans(Tween.TransitionType.Linear);
             _tween.TweenProperty(this, "visible_ratio", 1, duration * text.Length);
-            _tween.Finished += OnTweenCompleted;
+            _tween.Finished += () => {
+                if (IsInstanceValid(this)) OnTweenCompleted();
+            };
             EmitSignal(SignalName.StartTyping);
         }
 
         private void OnTweenCompleted()
         {
-            CleanupTweenEvent();
             EmitCompletion();
-        }
-
-        private void CleanupTweenEvent()
-        {
-            if (_tween != null && _tween.IsValid())
-            {
-                _tween.Finished -= OnTweenCompleted;
-            }
         }
 
         public void Interrupt()
@@ -112,7 +105,6 @@ namespace VisualNovel
             if (IsTyping)
             {
                 IsTyping = false;
-                CleanupTweenEvent();
                 EmitSignal(SignalName.OnInterrupt);
             }
         }
@@ -121,7 +113,6 @@ namespace VisualNovel
         {
             if (_tween != null)
             {
-                CleanupTweenEvent();
                 _tween.Kill();
                 _tween = null;
             }

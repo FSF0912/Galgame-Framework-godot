@@ -1,294 +1,309 @@
+using System;
 using System.Collections.Generic;
 using Godot;
 
+#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
+
 namespace VisualNovel
 {
-    public enum GameStatus : byte
-    {
-        WaitingForInput,
-        PerformingAction,
-        Skip,
-        CutScene,
-        BranchChoice
-    }
+	public enum GameStatus : byte
+	{
+		WaitingForInput,
+		PerformingAction,
+		Skip,
+		CutScene,
+		BranchChoice
+	}
 
-    public partial class DialogueManager : Node2D
-    {
-        public static DialogueManager Instance;
+	public partial class DialogueManager : Node2D
+	{
+		public static DialogueManager Instance;
 
-        [Signal] public delegate void ExecuteStartEventHandler();
-        [Signal] public delegate void ExecuteEndEventHandler();
-
-
-        public GameStatus gameStatus = GameStatus.WaitingForInput;
-        [ExportGroup("References")]
-        [Export] public Label SpeakerNameLabel;
-        [Export] public TypeWriter typeWriter;
-        [Export] public CrossFadeTextureRect BackGroundTexture;
-        [Export] public CrossFadeTextureRect AvatarTexture;
-        [Export] public Control TextureContainer;
-        [Export] public Control BranchContainer;
-        [Export] public PackedScene BranchButtonScene;
-
-        [ExportGroup("Settings")]
-        [Export] public bool AllowInput = true;
-
-        DialogueLine _currentDialogueLine;
-        public readonly Dictionary<int, CrossFadeTextureRect> SceneActiveTextures = [];
-
-        public override void _EnterTree()
-        {
-            base._EnterTree();
-            if (Instance != null)
-            {
-                QueueFree();
-                return;
-            }
-
-            Instance = this;
-        }
-
-        public override void _Ready()
-        {
-            base._Ready();
-            _BGMPlayer = new AudioStreamPlayer { Name = "BGMPlayer" };
-            _VoicePlayer = new AudioStreamPlayer { Name = "VoicePlayer" };
-            _SEPlayer = new AudioStreamPlayer { Name = "SEPlayer" };
-            SceneActiveTextures.Clear();
-
-            AddChild(_BGMPlayer);
-            AddChild(_VoicePlayer);
-            AddChild(_SEPlayer);
-
-            SceneActiveTextures.Add(-100, BackGroundTexture);
-            SceneActiveTextures.Add(-200, AvatarTexture);
-
-            typeWriter.StartTyping += EnableDialogueSign;
-            typeWriter.OnComplete += DisableDialogueSign;
-        }
+		[Signal] public delegate void ExecuteStartEventHandler();
+		[Signal] public delegate void ExecuteEndEventHandler();
 
 
-        public override void _ExitTree()
-        {
-            base._ExitTree();
-            typeWriter.StartTyping -= EnableDialogueSign;
-            typeWriter.OnComplete -= DisableDialogueSign;
-            Instance = null;
-        }
+		public GameStatus gameStatus = GameStatus.WaitingForInput;
+		[ExportGroup("References")]
+		[Export] public Label SpeakerNameLabel;
+		[Export] public TypeWriter typeWriter;
+		[Export] public CrossFadeTextureRect BackGroundTexture;
+		[Export] public CrossFadeTextureRect AvatarTexture;
+		[Export] public Control TextureContainer;
+		[Export] public Control BranchContainer;
+		[Export] public PackedScene BranchButtonScene;
 
-        public override void _Input(InputEvent @event)
-        {
-            if (gameStatus == GameStatus.BranchChoice || !AllowInput || gameStatus == GameStatus.CutScene)
-                return;
+		[ExportGroup("Settings")]
+		[Export] public bool AllowInput = true;
 
-            if (@event.IsActionPressed("ui_accept"))
-            {
-                HandleDialogue();
-                GetViewport().SetInputAsHandled();
-            }
-            else if (@event is InputEventMouseButton mouseEvent &&
-                 (mouseEvent.ButtonIndex == MouseButton.Left || mouseEvent.ButtonIndex == MouseButton.WheelDown) &&
-                 mouseEvent.Pressed)
-            {
-                HandleDialogue();
-                GetViewport().SetInputAsHandled();
-            }
+		DialogueLine _currentDialogueLine;
+		public readonly Dictionary<int, CrossFadeTextureRect> SceneActiveTextures = [];
+
+		public override void _EnterTree()
+		{
+			base._EnterTree();
+			if (Instance == null) 
+				Instance = this; 
+			else 
+				QueueFree();
+		}
+
+		public override void _Ready()
+		{
+			base._Ready();
+			_BGMPlayer = new AudioStreamPlayer { Name = "BGMPlayer" };
+			_VoicePlayer = new AudioStreamPlayer { Name = "VoicePlayer" };
+			_SEPlayer = new AudioStreamPlayer { Name = "SEPlayer" };
+			SceneActiveTextures.Clear();
+
+			AddChild(_BGMPlayer);
+			AddChild(_VoicePlayer);
+			AddChild(_SEPlayer);
+
+			SceneActiveTextures.Add(-100, BackGroundTexture);
+			SceneActiveTextures.Add(-200, AvatarTexture);
+
+			typeWriter.StartTyping += EnableDialogueSign;
+			typeWriter.OnComplete += DisableDialogueSign;
+
+			_currentDialogueLine = TestScenario.Get();
+			_currentDialogueLine.Execute(this);
+		}
 
 
-            void HandleDialogue()
-            {
-                if (gameStatus == GameStatus.PerformingAction)
-                    InterruptCurrentDialogue();
-                else if (gameStatus == GameStatus.WaitingForInput)
-                    NextDialogue();
-            }
-        }
+		public override void _ExitTree()
+		{
+			base._ExitTree();
+			typeWriter.StartTyping -= EnableDialogueSign;
+			typeWriter.OnComplete -= DisableDialogueSign;
+			Instance = null;
+		}
+
+		public override void _Input(InputEvent @event)
+		{
+			if (gameStatus == GameStatus.BranchChoice || !AllowInput || gameStatus == GameStatus.CutScene)
+				return;
+
+			if (@event.IsActionPressed("ui_accept")) HandleDialogue();
+
+			else if (@event is InputEventMouseButton mouseEvent &&
+				 (mouseEvent.ButtonIndex == MouseButton.Left || mouseEvent.ButtonIndex == MouseButton.WheelDown) &&
+				 mouseEvent.Pressed) HandleDialogue();
 
 
-        public void CreateTexture(int id, Texture2D defaultTex = null, bool immediate = false)
-        {
-            if (SceneActiveTextures.ContainsKey(id)) return;
+			void HandleDialogue()
+			{
+				if (gameStatus == GameStatus.PerformingAction)
+					InterruptCurrentDialogue();
+				else if (gameStatus == GameStatus.WaitingForInput)
+					NextDialogue();
 
-            var textureRef = new CrossFadeTextureRect(TextureInitParams.DefaultPortraitNormalDistance)
-            { Name = $"Texture_{id}" };
+				GetViewport().SetInputAsHandled();
+			}
+		}
 
-            TextureContainer.AddChild(textureRef);
-            SceneActiveTextures.Add(id, textureRef);
 
-            if (defaultTex != null)
-                textureRef.SetTextureWithFade(defaultTex, immediate: immediate);
-        }
+		public CrossFadeTextureRect CreateTexture(int id, Texture2D defaultTex = null, bool immediate = false)
+		{
+			if (SceneActiveTextures.TryGetValue(id, out CrossFadeTextureRect value)) return value;
 
-        private void EnableDialogueSign() { }
-        private void DisableDialogueSign() { }
+			var textureRef = new CrossFadeTextureRect(TextureParams.DefaultPortraitNormalDistance)
+			{ Name = $"Texture_{id}" };
 
-        #region Audio Control
+			TextureContainer.AddChild(textureRef);
+			SceneActiveTextures.Add(id, textureRef);
 
-        AudioStreamPlayer _BGMPlayer, _VoicePlayer, _SEPlayer;
-        Tween _BGMFadeTween;
+			if (defaultTex != null)
+				textureRef.SetTextureWithFade(defaultTex, immediate: immediate);
 
-        public void PlayBGM(string path, bool loop = true)
-        {
-            var audioStream = GD.Load<AudioStream>(path);
-            if (audioStream == null) return;
+			return textureRef;
+		}
 
-            _BGMPlayer.Stop();
-            _BGMPlayer.Stream = audioStream;
-            _BGMPlayer.VolumeDb = 0;
-            HandleLooping(audioStream, loop);
-            _BGMPlayer.Play();
-        }
+		private void EnableDialogueSign() { }
+		private void DisableDialogueSign() { }
 
-        public void StopBGM(bool smooth = false, float fadeDuration = -1.0f)
-        {
-            if (smooth)
-            {
-                if (_BGMFadeTween != null && IsInstanceValid(_BGMFadeTween))
-                {
-                    _BGMFadeTween.Kill();
-                    _BGMFadeTween = null;
-                }
-                _BGMFadeTween = CreateTween();
-                _BGMFadeTween.TweenProperty(_BGMPlayer, "volume_db", -80f,
-                fadeDuration > 0 ? fadeDuration : GlobalSettings.AnimationDefaultTime).
-                SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
-                _BGMFadeTween.TweenCallback(Callable.From(StopAndClearStream));
-            }
-            else
-            {
-                StopAndClearStream();
-            }
+		#region Audio Control
 
-            void StopAndClearStream() {
-                _BGMPlayer.Stop();
-                _BGMPlayer.Stream = null;
-            }
-        }
+		AudioStreamPlayer _BGMPlayer, _VoicePlayer, _SEPlayer;
+		Tween _BGMFadeTween;
 
-        public void PlayVoice(string path, bool loop = false)
-        {
-            var audioStream = GD.Load<AudioStream>(path);
-            if (audioStream == null) return;
+		public void PlayBGM(string path, bool loop = true)
+		{
+			var audioStream = GD.Load<AudioStream>(path);
+			if (audioStream == null) return;
 
-            _VoicePlayer.Stop();
-            _VoicePlayer.Stream = audioStream;
-            HandleLooping(audioStream, loop);
-            _VoicePlayer.Play();
-        }
+			StopAndClearStream(_BGMPlayer);
+			_BGMPlayer.Stream = audioStream;
+			_BGMPlayer.VolumeDb = 0;
+			HandleLooping(audioStream, loop);
+			_BGMPlayer.Play();
+		}
 
-        public void StopVoice()
-        {
-            _VoicePlayer.Stop();
-            _VoicePlayer.Stream = null;
-        }
+		public void StopBGM(bool smooth = false, float fadeDuration = -1.0f)
+		{
+			if (smooth)
+			{
+				if (_BGMFadeTween != null && IsInstanceValid(_BGMFadeTween))
+				{
+					_BGMFadeTween.Kill();
+					_BGMFadeTween = null;
+				}
+				_BGMFadeTween = CreateTween();
+				_BGMFadeTween.TweenProperty(_BGMPlayer, "volume_db", -80f,
+				fadeDuration > 0 ? fadeDuration : GlobalSettings.AnimationDefaultTime).
+				SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
+				_BGMFadeTween.TweenCallback(Callable.From(() => StopAndClearStream(_BGMPlayer)));
+			}
+			else
+			{
+				StopAndClearStream(_BGMPlayer);
+			}
+		}
 
-        public void PlaySE(string path, bool loop = false)
-        {
-            var audioStream = GD.Load<AudioStream>(path);
-            if (audioStream == null) return;
+		public void PlayVoice(string path, bool loop = false)
+		{
+			var audioStream = GD.Load<AudioStream>(path);
+			if (audioStream == null) return;
 
-            _SEPlayer.Stop();
-            _SEPlayer.Stream = audioStream;
-            HandleLooping(audioStream, loop);
-            _SEPlayer.Play();
-        }
+			StopAndClearStream(_VoicePlayer);
+			_VoicePlayer.Stream = audioStream;
+			HandleLooping(audioStream, loop);
+			_VoicePlayer.Play();
+		}
 
-        public void StopSE()
-        {
-            _SEPlayer.Stop();
-            _SEPlayer.Stream = null;
-        }
+		public void StopVoice()
+		{
+			StopAndClearStream(_VoicePlayer);
+		}
 
-        private void HandleLooping(AudioStream stream, bool loop)
-        {
-            if (!loop) return;
 
-            switch (stream)
-            {
-                case AudioStreamOggVorbis oggStream:
-                    oggStream.Loop = true;
-                    break;
-                case AudioStreamMP3 mp3Stream:
-                    mp3Stream.Loop = true;
-                    break;
-                case AudioStreamWav wavStream:
-                    wavStream.LoopMode = AudioStreamWav.LoopModeEnum.Forward;
-                    break;
-            }
-        }
-        #endregion
+		public void PlaySE(string path, bool loop = false)
+		{
+			var audioStream = GD.Load<AudioStream>(path);
+			if (audioStream == null) return;
 
-        #region State Management
+			StopAndClearStream(_SEPlayer);
+			_SEPlayer.Stream = audioStream;
+			HandleLooping(audioStream, loop);
+			_SEPlayer.Play();
+		}
 
-        uint _pendingTasks = 0;
+		public void StopSE()
+		{
+			StopAndClearStream(_SEPlayer);
+		}
 
-        //invoke after execute
-        private void AddPendingTask()
-        {
-            foreach (var line in _currentDialogueLine.Commands)
-            {
-                switch (line)
-                {
-                    case SpeakerLine:
-                        _pendingTasks++;
-                        typeWriter.OnComplete -= CompleteTask;
-                        typeWriter.OnComplete += CompleteTask;
-                        break;
+		private void HandleLooping(AudioStream stream, bool loop)
+		{
+			if (!loop) return;
 
-                    case Audioline audioline:
-                        if (audioline.audioType == Audioline.AudioType.Voice)
-                        {
-                            _pendingTasks++;
-                            _VoicePlayer.Finished -= CompleteTask;
-                            _VoicePlayer.Finished += CompleteTask;
-                        }
-                        break;
+			switch (stream)
+			{
+				case AudioStreamOggVorbis oggStream:
+					oggStream.Loop = true;
+					break;
+				case AudioStreamMP3 mp3Stream:
+					mp3Stream.Loop = true;
+					break;
+				case AudioStreamWav wavStream:
+					wavStream.LoopMode = AudioStreamWav.LoopModeEnum.Forward;
+					break;
+			}
+		}
 
-                    case TextureLine textureLine:
-                        _pendingTasks++;
-                        var textureRef = SceneActiveTextures[textureLine.ID];
-                        textureRef.FadeComplete -= CompleteTask;
-                        textureRef.FadeComplete += CompleteTask;
-                        break;
+		private void StopAndClearStream(AudioStreamPlayer player)
+		{
+			if (player == null) return;
 
-                    case TextureAnimationLine animLine:
-                        _pendingTasks++;
-                        var textureRef1 = SceneActiveTextures[animLine.ID];
-                        textureRef1.AnimationComplete -= CompleteTask;
-                        textureRef1.AnimationComplete += CompleteTask;
-                        break;
-                }
-            }
-        }
+			player.Stop();
+			player.Stream?.Dispose();
+			player.Stream = null;
+		}
+		#endregion
 
-        private void CompleteTask()
-        {
-            if (_pendingTasks > 0) _pendingTasks--;
-            if (_pendingTasks == 0 && gameStatus == GameStatus.PerformingAction)
-            {
-                EmitSignal(SignalName.ExecuteEnd);
-                gameStatus = GameStatus.WaitingForInput;
-            }
-        }
+		#region State Management
 
-        private void InterruptCurrentDialogue()
-        {
-            _pendingTasks = 0;
-            gameStatus = GameStatus.WaitingForInput;
-            _currentDialogueLine?.Interrupt(this);
-        }
+		uint _pendingTasks = 0;
 
-        public void NextDialogue()
-        {
-            if (_currentDialogueLine == null) return;
-            EmitSignal(SignalName.ExecuteStart);
+		//invoke after execute
+		private void AddPendingTask()
+		{
+			foreach (var line in _currentDialogueLine.Commands)
+			{
+				switch (line)
+				{
+					case SpeakerLine:
+						_pendingTasks++;
+						typeWriter.OnComplete -= CompleteTask;
+						typeWriter.OnComplete += CompleteTask;
+						break;
 
-            InterruptCurrentDialogue();
-            //switch to next dialogue line
-            gameStatus = GameStatus.PerformingAction;
-            _currentDialogueLine.Execute(this);
-            AddPendingTask();
-        }
-        #endregion
-    }
+					case Audioline audioline:
+						if (audioline.audioType == Audioline.AudioType.Voice)
+						{
+							_pendingTasks++;
+							_VoicePlayer.Finished -= CompleteTask;
+							_VoicePlayer.Finished += CompleteTask;
+						}
+						break;
+
+					case TextureLine textureLine:
+						try
+						{ 
+							_pendingTasks++;
+							var textureRef = SceneActiveTextures[textureLine.ID];
+							textureRef.FadeComplete -= CompleteTask;
+							textureRef.FadeComplete += CompleteTask;
+						}
+						catch{}
+
+						break;
+
+					case TextureAnimationLine animLine:
+						try
+						{
+							_pendingTasks++;
+							var textureRef1 = SceneActiveTextures[animLine.ID];
+							textureRef1.AnimationComplete -= CompleteTask;
+							textureRef1.AnimationComplete += CompleteTask;
+						}
+						catch{}
+						
+						break;
+				}
+			}
+		}
+
+		private void CompleteTask()
+		{
+			if (_pendingTasks > 0) _pendingTasks--;
+			if (_pendingTasks == 0 && gameStatus == GameStatus.PerformingAction)
+			{
+				EmitSignal(SignalName.ExecuteEnd);
+				gameStatus = GameStatus.WaitingForInput;
+			}
+		}
+
+		private void InterruptCurrentDialogue()
+		{
+			_pendingTasks = 0;
+			gameStatus = GameStatus.WaitingForInput;
+			_currentDialogueLine?.Interrupt(this);
+		}
+
+		public void NextDialogue()
+		{
+			if (_currentDialogueLine == null) return;
+			EmitSignal(SignalName.ExecuteStart);
+
+			InterruptCurrentDialogue();
+			//switch to next dialogue line
+			_currentDialogueLine = TestScenario.Get();
+			//
+			gameStatus = GameStatus.PerformingAction;
+			_currentDialogueLine.Execute(this);
+			AddPendingTask();
+		}
+		#endregion
+	}
 }
