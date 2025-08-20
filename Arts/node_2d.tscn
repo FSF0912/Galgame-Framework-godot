@@ -626,33 +626,40 @@ variation_transform = Transform2D(1, 0.2, 0, 1, 0, 0)
 base_font = SubResource("FontFile_gn3x6")
 variation_embolden = 1.2
 
-[node name="Node2D" type="Node2D" node_paths=PackedStringArray("SpeakerNameLabel", "typeWriter", "BackGroundTexture", "TextureContainer", "BranchContainer")]
+[node name="Node2D" type="Node2D"]
 top_level = true
+
+[node name="DialogueUI" type="Control" parent="." node_paths=PackedStringArray("SpeakerNameLabel", "typeWriter", "BackGroundTexture", "TextureContainer", "BranchContainer")]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
 script = ExtResource("1_nxw56")
 SpeakerNameLabel = NodePath("DialogueDisplayArea/SpeakerName")
 typeWriter = NodePath("DialogueDisplayArea/RichTextLabel")
 BackGroundTexture = NodePath("BackGroundTexture")
 TextureContainer = NodePath("TextureContainer")
-BranchContainer = NodePath("BranchContainer")
+BranchContainer = NodePath("Control")
 
-[node name="BackGroundTexture" type="TextureRect" parent="."]
+[node name="BackGroundTexture" type="TextureRect" parent="DialogueUI"]
+layout_mode = 0
 offset_right = 1920.0
 offset_bottom = 1080.0
 script = ExtResource("5_gn3x6")
 
-[node name="TextureContainer" type="Control" parent="."]
-layout_mode = 3
+[node name="TextureContainer" type="Control" parent="DialogueUI"]
 anchors_preset = 0
 offset_right = 1920.0
 offset_bottom = 1080.0
 
-[node name="DialogueDisplayArea" type="ColorRect" parent="."]
+[node name="DialogueDisplayArea" type="ColorRect" parent="DialogueUI"]
+layout_mode = 0
 offset_top = 730.0
 offset_right = 1920.0
 offset_bottom = 1080.0
 color = Color(0, 0, 0, 0.121569)
 
-[node name="SpeakerName" type="Label" parent="DialogueDisplayArea"]
+[node name="SpeakerName" type="Label" parent="DialogueUI/DialogueDisplayArea"]
 layout_mode = 0
 offset_left = 325.0
 offset_right = 1625.0
@@ -663,7 +670,7 @@ theme_override_font_sizes/font_size = 40
 text = "Alan Walker"
 max_lines_visible = 1
 
-[node name="RichTextLabel" type="RichTextLabel" parent="DialogueDisplayArea"]
+[node name="RichTextLabel" type="RichTextLabel" parent="DialogueUI/DialogueDisplayArea"]
 layout_mode = 0
 offset_left = 325.0
 offset_top = 70.0
@@ -684,8 +691,40 @@ text = "text!!!!"
 selection_enabled = true
 script = ExtResource("2_5npg8")
 
-[node name="BranchContainer" type="Control" parent="."]
-layout_mode = 3
+[node name="Control" type="Control" parent="DialogueUI"]
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
+
+[node name="OptionsContainer" type="HBoxContainer" parent="."]
+offset_left = 1045.0
+offset_top = 961.0
+offset_right = 1920.0
+offset_bottom = 1080.0
+alignment = 2
+
+[node name="SaveButton" type="Button" parent="OptionsContainer"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 49
+toggle_mode = true
+keep_pressed_outside = true
+text = "Save"
+
+[node name="LoadButton" type="Button" parent="OptionsContainer"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 49
+toggle_mode = true
+keep_pressed_outside = true
+text = "Load
+"
+
+[node name="Config" type="Button" parent="OptionsContainer"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 49
+toggle_mode = true
+keep_pressed_outside = true
+text = "Config
+"

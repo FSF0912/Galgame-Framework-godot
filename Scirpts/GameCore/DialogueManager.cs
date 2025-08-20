@@ -15,7 +15,7 @@ namespace VisualNovel
 		BranchChoice
 	}
 
-	public partial class DialogueManager : Node2D
+	public partial class DialogueManager : Control
 	{
 		public static DialogueManager Instance;
 
