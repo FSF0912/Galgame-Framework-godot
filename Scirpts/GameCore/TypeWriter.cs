@@ -5,7 +5,7 @@ namespace VisualNovel
 {
     public partial class TypeWriter : RichTextLabel
     {
-        [Export] public float PerCharSpeed = 0.03f;
+        [Export(PropertyHint.Range, "0.01,1")] public float PerCharSpeed = 0.03f;
         public bool IsTyping { get; private set; }
 
         [Signal] public delegate void StartTypingEventHandler();

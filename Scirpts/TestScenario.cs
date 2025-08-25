@@ -35,7 +35,7 @@ namespace VisualNovel
                 {
                     new SpeakerLine("", "欢迎来到测试场景！"),
                     new TextureLine(-100, TextureLine.TextureMode.Switch, "res://test/nine.png"),
-                    new Audioline(Audioline.AudioType.BGM, "res://test/bgmusic_1.mp3", loop: true)
+                    new Audioline(Audioline.AudioType.BGM, audioPlayType:Audioline.AudioPlayType.Play, "res://test/bgmusic_1.mp3", loop: true)
                 }),
 
                 // 第2行: 角色 "Yoshino" 登场并说话。
@@ -43,6 +43,7 @@ namespace VisualNovel
                 {
                     new TextureLine(1, TextureLine.TextureMode.Switch, "res://test/yoshino.png"),
                     new TextureAnimationLine(1, TextureAnimationLine.AnimationType.Shake, duration: 1f, isRelative: false),
+                    new TextureAnimationLine(1, TextureAnimationLine.AnimationType.Move, 0.5f, new Vector2(150, 150), isRelative: false),
                     new SpeakerLine("Yoshino", "欢迎来到这个焕然一新的测试场景！")
                 }),
                 
@@ -95,7 +96,7 @@ namespace VisualNovel
                 {
                     // [修正] 为 ColorTint 动画的 targetVector 参数传入 null
                     new TextureAnimationLine(-100, TextureAnimationLine.AnimationType.ColorTint, 0.5f, targetVector: null, targetColor: new Color(1, 0.6f, 0.6f)),
-                    new Audioline(Audioline.AudioType.BGM, "res://test/manbo.mp3", loop: true),
+                    new Audioline(Audioline.AudioType.SE, Audioline.AudioPlayType.Play, "res://test/manbo.mp3", loop: true),
                     // [修正] 为 ColorTint 动画的 targetVector 参数传入 null
                     new TextureAnimationLine(3, TextureAnimationLine.AnimationType.ColorTint, 0.5f, targetVector: null, targetColor: new Color(1.5f, 1.5f, 1.5f)),
                     new SpeakerLine("Yoshino", "呀！发、发生了什么事？！")
@@ -115,7 +116,7 @@ namespace VisualNovel
                 new DialogueLine(new List<IDialogueCommand>
                 {
                     new TextureLine(2, TextureLine.TextureMode.Switch, "res://test/drwind.jpg"),
-                    new Audioline(Audioline.AudioType.SE, "res://test/laugh.wav"),
+                    new Audioline(Audioline.AudioType.SE, Audioline.AudioPlayType.Play, "res://test/laugh.wav"),
                     // [修正] 为 Fade 动画的 targetVector 参数传入 null
                     new TextureAnimationLine(3, TextureAnimationLine.AnimationType.Fade, 0.5f, targetVector: null, alpha: 0f),
                     new SpeakerLine("Dr. Wind", "看我的！这样就解决了。")
@@ -126,7 +127,7 @@ namespace VisualNovel
                 {
                     // [修正] 为 ColorTint 动画的 targetVector 参数传入 null
                     new TextureAnimationLine(-100, TextureAnimationLine.AnimationType.ColorTint, 1.0f, targetVector: null, targetColor: new Color(1, 1, 1)),
-                    new Audioline(Audioline.AudioType.BGM, "res://test/bgmusic_1.mp3", loop: true),
+                    new Audioline(Audioline.AudioType.BGM, Audioline.AudioPlayType.Play, "res://test/bgmusic_1.mp3", loop: true),
                     new TextureAnimationLine(2, TextureAnimationLine.AnimationType.Move, 0.8f, new Vector2(850, 150), isRelative: false),
                     new SpeakerLine("Yoshino", "哇...你好厉害，博士！")
                 }),
@@ -148,7 +149,7 @@ namespace VisualNovel
                     new TextureLine(1, TextureLine.TextureMode.Delete),
                     new TextureLine(2, TextureLine.TextureMode.Delete),
                     new TextureLine(3, TextureLine.TextureMode.Delete),
-                    new Audioline(Audioline.AudioType.BGM, null, smoothStop: true, fadeDuration: 1.5f) { audioPlayType = Audioline.AudioPlayType.Stop }
+                    new Audioline(Audioline.AudioType.BGM, Audioline.AudioPlayType.Stop, null, smoothStop: true, fadeDuration: 1.5f) { audioPlayType = Audioline.AudioPlayType.Stop }
                 }),
                 
                 // 第14行: 显示结束语。

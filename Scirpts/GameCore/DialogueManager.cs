@@ -19,8 +19,17 @@ namespace VisualNovel
 	{
 		public static DialogueManager Instance;
 
-		[Signal] public delegate void ExecuteStartEventHandler();
-		[Signal] public delegate void ExecuteEndEventHandler();
+		/// <summary>
+		/// Signal emitted after a new dialogue line already starts executing.
+		/// </summary>
+		[Signal] public delegate void AfterExecuteStartEventHandler();
+
+		/// <summary>
+		/// Signal emitted before a new dialogue line already starts executing.
+		/// </summary>
+		[Signal] public delegate void BeforeExecuteStartEventHandler();
+
+		[Signal] public delegate void ExecuteCompleteEventHandler();
 
 
 		public GameStatus gameStatus = GameStatus.WaitingForInput;
@@ -42,9 +51,9 @@ namespace VisualNovel
 		public override void _EnterTree()
 		{
 			base._EnterTree();
-			if (Instance == null) 
-				Instance = this; 
-			else 
+			if (Instance == null)
+				Instance = this;
+			else
 				QueueFree();
 		}
 
@@ -65,6 +74,9 @@ namespace VisualNovel
 
 			typeWriter.StartTyping += EnableDialogueSign;
 			typeWriter.OnComplete += DisableDialogueSign;
+
+			BeforeExecuteStart += AutoplayRegistered_BeforeExecuteStart;
+			ExecuteComplete += AutoplayRegistered_ExecuteComplete;
 
 			_currentDialogueLine = TestScenario.Get();
 			_currentDialogueLine.Execute(this);
@@ -103,18 +115,18 @@ namespace VisualNovel
 		}
 
 
-		public CrossFadeTextureRect CreateTexture(int id, Texture2D defaultTex = null, bool immediate = false)
+		public CrossFadeTextureRect CreateTexture(int id, float duration, TextureParams textureParams = null, Texture2D defaultTex = null, bool immediate = false)
 		{
 			if (SceneActiveTextures.TryGetValue(id, out CrossFadeTextureRect value)) return value;
 
-			var textureRef = new CrossFadeTextureRect(TextureParams.DefaultPortraitNormalDistance)
+			var textureRef = new CrossFadeTextureRect(textureParams ?? TextureParams.DefaultPortraitNormalDistance)
 			{ Name = $"Texture_{id}" };
 
 			TextureContainer.AddChild(textureRef);
 			SceneActiveTextures.Add(id, textureRef);
 
 			if (defaultTex != null)
-				textureRef.SetTextureWithFade(defaultTex, immediate: immediate);
+				textureRef.SetTextureWithFade(defaultTex, duration:duration, immediate: immediate, ZIndex: id);
 
 			return textureRef;
 		}
@@ -248,39 +260,48 @@ namespace VisualNovel
 						break;
 
 					case TextureLine textureLine:
-						try
-						{ 
+						if (SceneActiveTextures.TryGetValue(textureLine.ID, out var textureRef))
+						{
 							_pendingTasks++;
-							var textureRef = SceneActiveTextures[textureLine.ID];
 							textureRef.FadeComplete -= CompleteTask;
 							textureRef.FadeComplete += CompleteTask;
 						}
-						catch{}
-
 						break;
 
 					case TextureAnimationLine animLine:
-						try
+						if (SceneActiveTextures.TryGetValue(animLine.ID, out var textureRef1))
 						{
 							_pendingTasks++;
-							var textureRef1 = SceneActiveTextures[animLine.ID];
-							textureRef1.AnimationComplete -= CompleteTask;
-							textureRef1.AnimationComplete += CompleteTask;
+							textureRef1.Animator.AnimationComplete -= CompleteTask;
+							textureRef1.Animator.AnimationComplete += CompleteTask; 
 						}
-						catch{}
-						
 						break;
 				}
 			}
+			GD.Print($"Pending tasks: {_pendingTasks}");
 		}
 
 		private void CompleteTask()
 		{
 			if (_pendingTasks > 0) _pendingTasks--;
+			
 			if (_pendingTasks == 0 && gameStatus == GameStatus.PerformingAction)
 			{
-				EmitSignal(SignalName.ExecuteEnd);
+				EmitSignal(SignalName.ExecuteComplete);
 				gameStatus = GameStatus.WaitingForInput;
+				GD.Print("All tasks completed, waiting for input.");
+			}
+		}
+
+		private void CompleteTask(uint count)
+		{
+			if (_pendingTasks > 0) _pendingTasks -= count;
+
+			if (_pendingTasks <= 0 && gameStatus == GameStatus.PerformingAction)
+			{
+				EmitSignal(SignalName.ExecuteComplete);
+				gameStatus = GameStatus.WaitingForInput;
+				GD.Print("All tasks completed, waiting for input.");
 			}
 		}
 
@@ -289,12 +310,15 @@ namespace VisualNovel
 			_pendingTasks = 0;
 			gameStatus = GameStatus.WaitingForInput;
 			_currentDialogueLine?.Interrupt(this);
+			//总是发射完成信号
+			EmitSignal(SignalName.ExecuteComplete);
 		}
 
 		public void NextDialogue()
 		{
 			if (_currentDialogueLine == null) return;
-			EmitSignal(SignalName.ExecuteStart);
+
+			EmitSignal(SignalName.BeforeExecuteStart);
 
 			InterruptCurrentDialogue();
 			//switch to next dialogue line
@@ -303,7 +327,80 @@ namespace VisualNovel
 			gameStatus = GameStatus.PerformingAction;
 			_currentDialogueLine.Execute(this);
 			AddPendingTask();
+
+			EmitSignal(SignalName.AfterExecuteStart);
 		}
 		#endregion
+
+		#region Autoplay
+		[ExportGroup("Autoplay")]
+		[Export] public bool EnableAutoplay = false;
+		[Export(PropertyHint.Range, "0.5,5")] public float AutoplayDelay = 2.0f;
+
+		bool _autoplay_ExecutionComplete = false;
+		/// <summary>
+		/// 表示是否所有行为已经播放完成。
+		/// </summary>
+		bool IsAutoplayExecutionComplete
+		{
+			get => _autoplay_ExecutionComplete;
+			set
+			{
+				_autoplay_ExecutionComplete = value;
+				if (EnableAutoplay && value)
+				{
+					StartTimerForAutoplay();
+				}
+			}
+		}
+
+		Timer _autoplayTimer;
+
+		#region  Autoplay/Register Methods
+		private void AutoplayRegistered_ExecuteComplete()
+		{
+			IsAutoplayExecutionComplete = true;
+		}
+
+		private void AutoplayRegistered_BeforeExecuteStart()
+		{
+			IsAutoplayExecutionComplete	 = false;
+		}
+
+		private void StartTimerForAutoplay()
+		{
+			/*
+			//1
+			GetTree().CreateTimer(AutoplayDelay).Timeout += () =>
+			{
+				if (gameStatus == GameStatus.WaitingForInput)
+				{
+					NextDialogue();
+				}
+			};
+			*/
+
+			_autoplayTimer?.QueueFree();
+			_autoplayTimer = null;
+			_autoplayTimer = new Timer
+			{
+				WaitTime = AutoplayDelay,
+				OneShot = true,
+				Name = "AutoplayTimer"
+			};
+			_autoplayTimer.Timeout += () =>
+			{
+				if (gameStatus == GameStatus.WaitingForInput)
+					NextDialogue();
+			};
+			AddChild(_autoplayTimer);
+			_autoplayTimer.Start();
+		}
+
+		#endregion
+
+		#endregion
+
+
 	}
 }

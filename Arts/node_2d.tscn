@@ -634,12 +634,15 @@ layout_mode = 3
 anchors_preset = 0
 offset_right = 1920.0
 offset_bottom = 1080.0
+size_flags_horizontal = 4
+size_flags_vertical = 4
 script = ExtResource("1_nxw56")
 SpeakerNameLabel = NodePath("DialogueDisplayArea/SpeakerName")
 typeWriter = NodePath("DialogueDisplayArea/RichTextLabel")
 BackGroundTexture = NodePath("BackGroundTexture")
 TextureContainer = NodePath("TextureContainer")
-BranchContainer = NodePath("Control")
+BranchContainer = NodePath("")
+EnableAutoplay = true
 
 [node name="BackGroundTexture" type="TextureRect" parent="DialogueUI"]
 layout_mode = 0
@@ -691,10 +694,12 @@ text = "text!!!!"
 selection_enabled = true
 script = ExtResource("2_5npg8")
 
-[node name="Control" type="Control" parent="DialogueUI"]
-anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
+[node name="BranchContainer" type="VBoxContainer" parent="DialogueUI"]
+layout_mode = 0
+offset_left = 325.0
+offset_top = 138.0
+offset_right = 1473.0
+offset_bottom = 922.0
 
 [node name="OptionsContainer" type="HBoxContainer" parent="."]
 offset_left = 1045.0
