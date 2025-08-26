@@ -63,12 +63,12 @@ namespace VisualNovel
 
         public CrossFadeTextureRect(TextureParams initParams) : this(null, initParams) { }
 
-        public CrossFadeTextureRect(Texture2D initialTexture,
+        public CrossFadeTextureRect(string initTexPath,
         TextureParams initParams = default)
         {
             TextureParams = initParams;
             SetAnchorsAndOffsetsPreset(initParams.layoutPreset, LayoutPresetMode.KeepSize);
-            Texture = initialTexture ?? GetEmptyTexture(initParams.size);
+            Texture = GD.Load<Texture2D>(initTexPath) ?? GetEmptyTexture(initParams.size);
             Position = initParams.position;
             RotationDegrees = initParams.rotation_degrees;
             Size = initParams.size;
@@ -134,6 +134,7 @@ namespace VisualNovel
                 _fadingTween = null;
             }
         }
+        
         #endregion
 
         #region Fading
@@ -185,10 +186,54 @@ namespace VisualNovel
         /// <summary>
         /// 淡化过渡到目标纹理
         /// </summary>
-        /// <param name="newTexture"></param>
-        /// <param name="duration"></param>
-        /// <param name="immediate"></param>
-        public void SetTextureWithFade(Texture2D newTexture, float duration = -1, bool immediate = false, int ZIndex = 0)
+        public virtual void SetTextureWithFade(string newTexPath, float duration = -1, bool immediate = false, int ZIndex = 0)
+        {
+            if (string.IsNullOrWhiteSpace(newTexPath))
+            {
+                if (Texture == null || _pendingDeletion) return;
+                var emptyTex = GetEmptyTexture(Texture.GetSize());
+                SetTextureWithFade(emptyTex, duration, immediate, ZIndex);
+                return;
+            }
+            
+            var newTexture = GD.Load<Texture2D>(newTexPath);
+
+            if (immediate)
+            {
+                SetTextureImmediately(newTexture);
+                return;
+            }
+
+            if (Texture == newTexture || _pendingDeletion)
+                return;
+
+            if (newTexture == null)
+            {
+                if (Texture == null) return;
+                newTexture = GetEmptyTexture(Texture.GetSize());
+            }
+
+            ClearActiveFadingTween();
+            InitShaderMaterial();
+
+            _shaderMaterial.SetShaderParameter("current_tex", Texture ?? GetEmptyTexture(newTexture.GetSize()));
+            _shaderMaterial.SetShaderParameter("next_tex", newTexture);
+
+            _fadingTween = CreateTween();
+            _fadingTween.SetEase(Tween.EaseType.Out);
+            _fadingTween.SetTrans(Tween.TransitionType.Linear);
+            _fadingTween.TweenMethod(Callable.From<float>(SetProgress), 0.0f, 1.0f, duration > 0 ? duration : FadeDuration);
+
+            _nextTexture = newTexture;
+            _fadingTween.Finished += OnFadeComplete;
+            
+            this.ZIndex = ZIndex;
+        }
+
+        /// <summary>
+        /// 淡化过渡到目标纹理
+        /// </summary>
+        public virtual void SetTextureWithFade(Texture2D newTexture, float duration = -1, bool immediate = false, int ZIndex = 0)
         {
             if (immediate)
             {
@@ -221,6 +266,8 @@ namespace VisualNovel
             
             this.ZIndex = ZIndex;
         }
+        
+
 
         /*
         /// <summary>
@@ -272,7 +319,7 @@ namespace VisualNovel
         {
             if (Texture == null || _pendingDeletion) return;
 
-            SetTextureWithFade(GetEmptyTexture(Texture.GetSize()), duration:duration, immediate: immediate);
+            SetTextureWithFade(GetEmptyTexture(Texture.GetSize()), duration: duration, immediate: immediate);
 
             if (deleteAfterFade)
             {

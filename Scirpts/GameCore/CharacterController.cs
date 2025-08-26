@@ -24,6 +24,13 @@ namespace VisualNovel
             };
         }
 
-        
+        override public void SetTextureWithFade(Texture2D newTexture, float duration = -1, bool immediate = false, int ZIndex = 0)
+        {
+            base.SetTextureWithFade(newTexture, duration, immediate, ZIndex);
+            
+        }
+
+
+
     }
 }

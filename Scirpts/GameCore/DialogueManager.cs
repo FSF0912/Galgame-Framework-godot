@@ -131,6 +131,22 @@ namespace VisualNovel
 			return textureRef;
 		}
 
+		public CrossFadeTextureRect CreateTexture(int id, float duration, TextureParams textureParams = null, string defaultTexPath = null, bool immediate = false)
+		{
+			if (SceneActiveTextures.TryGetValue(id, out CrossFadeTextureRect value)) return value;
+
+			var textureRef = new CrossFadeTextureRect(textureParams ?? TextureParams.DefaultPortraitNormalDistance)
+			{ Name = $"Texture_{id}" };
+
+			TextureContainer.AddChild(textureRef);
+			SceneActiveTextures.Add(id, textureRef);
+
+			if (!string.IsNullOrWhiteSpace(defaultTexPath))
+				textureRef.SetTextureWithFade(defaultTexPath, duration:duration, immediate: immediate, ZIndex: id);
+
+			return textureRef;
+		}
+
 		private void EnableDialogueSign() { }
 		private void DisableDialogueSign() { }
 

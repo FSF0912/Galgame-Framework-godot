@@ -123,38 +123,26 @@ namespace VisualNovel
 
         public void Execute(DialogueManager dm)
         {
-            Texture2D targetTexture;
-            
-            if (!string.IsNullOrEmpty(targetTexturePath))
-            {
-                targetTexture = ResourceLoader.Load<Texture2D>(targetTexturePath);
-            }
-            else if(textureMode == TextureMode.Switch)
-            {
-                targetTexture = null;
-            }
-            else return;
-
             if (dm.SceneActiveTextures.TryGetValue(ID, out var targetRef))
             {
                 switch (textureMode)
                 {
                     case TextureMode.Switch:
-                        targetRef.SetTextureWithFade(targetTexture, fadeDuration, immediate:false, ZIndex:ID);
+                        targetRef.SetTextureWithFade(targetTexturePath, fadeDuration, immediate: false, ZIndex: ID);
                         break;
                     case TextureMode.Clear:
                         targetRef.ClearTexture(fadeDuration);
                         break;
                     case TextureMode.Delete:
                         dm.SceneActiveTextures.Remove(ID);
-                        targetRef.ClearTexture(fadeDuration, deleteAfterFade:true);
+                        targetRef.ClearTexture(fadeDuration, deleteAfterFade: true);
                         break;
-                    }
+                }
             }
             else
             {
                 if (textureMode == TextureMode.Delete || textureMode == TextureMode.Clear) return;
-                dm.CreateTexture(ID, fadeDuration, defaultTex:targetTexture);
+                dm.CreateTexture(ID, fadeDuration, defaultTexPath:targetTexturePath);
             }
         }
 
@@ -168,21 +156,15 @@ namespace VisualNovel
 
         public void Skip(DialogueManager dm)
         {
-            Texture2D targetTexture = null;
-            if (!string.IsNullOrEmpty(targetTexturePath))
-            {
-                targetTexture = ResourceLoader.Load<Texture2D>(targetTexturePath);
-            }
-            
             if (dm.SceneActiveTextures.TryGetValue(ID, out var targetRef))
             {
                 switch (textureMode)
                 {
                     case TextureMode.Switch:
-                        targetRef.SetTextureWithFade(targetTexture, immediate:true);
+                        targetRef.SetTextureWithFade(targetTexturePath, immediate:true);
                         break;
                     case TextureMode.Clear:
-                        targetRef.SetTextureWithFade(null, immediate:true);
+                        targetRef.SetTextureWithFade(string.Empty, immediate:true);
                         break;
                     case TextureMode.Delete:
                         dm.SceneActiveTextures.Remove(ID);
@@ -193,14 +175,14 @@ namespace VisualNovel
             else
             {
                 if (textureMode == TextureMode.Delete || textureMode == TextureMode.Clear) return;
-                dm.CreateTexture(ID, 0, defaultTex:targetTexture, immediate:true);
+                dm.CreateTexture(ID, 0, defaultTexPath:targetTexturePath, immediate:true);
             }
         }
     }
 
     public struct TextureAnimationLine : IDialogueCommand
     {
-        public enum AnimationType : byte { Move, Rotate, Scale, Shake, ColorTint, Fade, }
+        public enum AnimationType : byte { Move, Rotate, Scale, Shake, ColorTint, Fade, Default}
         public int ID;
         public AnimationType animationType;
 
@@ -251,6 +233,7 @@ namespace VisualNovel
         {
             if (dm.SceneActiveTextures.TryGetValue(ID, out var targetRef))
             {
+                duration = duration <= 0 ? GlobalSettings.AnimationDefaultTime : duration;
                 switch (animationType)
                 {
                     case AnimationType.Move:
