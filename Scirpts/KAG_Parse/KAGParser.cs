@@ -16,7 +16,7 @@ namespace VisualNovel
         // (?: ... | ...)    : 匹配两种可能的值格式
         //   "([^"]*)"      : 格式1: 匹配并捕获双引号内的所有内容
         //   (\S+)          : 格式2: 匹配并捕获一个不含空格的连续字符串
-        private static readonly Regex ParamRegex = new Regex(@"([a-zA-Z0-9_]+)\s*=\s*(?:""([^""]*)""|(\S+))", RegexOptions.Compiled);
+        private static readonly Regex ParamRegex = new Regex(@"([a-zA-Z0-9_]+)(?:\s*=\s*(?:""([^""]*)""|(\S+)))?", RegexOptions.Compiled);
 
         public static List<DialogueLine> ParseScript(string scenarioPath)
         {
@@ -135,12 +135,26 @@ namespace VisualNovel
         {
             var parameters = new Dictionary<string, string>();
             var matches = ParamRegex.Matches(paramString);
+
             foreach (Match match in matches)
             {
                 string key = match.Groups[1].Value;
-                // 正则表达式捕获组: 组2是带引号的值, 组3是不带引号的值
-                string value = match.Groups[2].Success ? match.Groups[2].Value : match.Groups[3].Value;
-                parameters[key] = value;
+                string value = null; // 默认值为 null
+
+                // 检查带引号的值（组2）或不带引号的值（组3）是否存在
+                if (match.Groups[2].Success)
+                {
+                    value = match.Groups[2].Value; // "value"
+                }
+                else if (match.Groups[3].Success)
+                {
+                    value = match.Groups[3].Value; // value
+                }
+                
+                // 如果 value 仍然是 null，说明它是一个独立参数，比如 "visible"
+                // 我们通常将其视为一个布尔 true 的标志。
+                // 在字典中，可以让它的值为一个特殊标记（如空字符串或 "true"），方便后续判断
+                parameters[key] = value ?? string.Empty; // 或者使用 "true"
             }
             return parameters;
         }

@@ -58,13 +58,14 @@ namespace VisualNovel
 
         public TextureAnimator Animator { get; private set; }
         public TextureParams TextureParams { get; private set; }
+        public bool IsChild { get; private set; } = false;
 
         public CrossFadeTextureRect() { }
 
         public CrossFadeTextureRect(TextureParams initParams) : this(null, initParams) { }
 
-        public CrossFadeTextureRect(string initTexPath,
-        TextureParams initParams = default)
+        public CrossFadeTextureRect(string initTexPath = null,
+        TextureParams initParams = default, bool isChild = false)
         {
             TextureParams = initParams;
             SetAnchorsAndOffsetsPreset(initParams.layoutPreset, LayoutPresetMode.KeepSize);
@@ -74,28 +75,32 @@ namespace VisualNovel
             Size = initParams.size;
             ExpandMode = initParams.expandMode;
             StretchMode = initParams.stretchMode;
+            IsChild = isChild;
         }
 
         public override void _Ready()
         {
             base._Ready();
             FadeDuration = GlobalSettings.AnimationDefaultTime;
-            
-            // 创建动画控制器子节点
-            Animator = new TextureAnimator(this)
+
+            if (!IsChild)
             {
-                Name = "Animator"
-            };
-            AddChild(Animator);
-            
-            //InitShaderMaterial();
-            DialogueManager.Instance.BeforeExecuteStart += Animator.ResetSignalEmitedSymbol;
+                // 创建动画控制器子节点
+                Animator = new TextureAnimator(this)
+                {
+                    Name = "Animator"
+                };
+                AddChild(Animator);
+
+                //InitShaderMaterial();
+                DialogueManager.Instance.BeforeExecuteStart += Animator.ResetSignalEmitedSymbol;
+            }
         }
 
         public override void _ExitTree()
         {
             base._ExitTree();
-            DialogueManager.Instance.BeforeExecuteStart -= Animator.ResetSignalEmitedSymbol;
+            if (!IsChild) DialogueManager.Instance.BeforeExecuteStart -= Animator.ResetSignalEmitedSymbol;
             ClearActiveFadingTween();
             _nextTexture = null;
 
@@ -204,7 +209,7 @@ namespace VisualNovel
                 return;
             }
 
-            if (Texture == newTexture || _pendingDeletion)
+            if (Texture == newTexture || _pendingDeletion || IsChild)
                 return;
 
             if (newTexture == null)
@@ -241,7 +246,7 @@ namespace VisualNovel
                 return;
             }
 
-            if (Texture == newTexture || _pendingDeletion)
+            if (Texture == newTexture || _pendingDeletion || IsChild)
                 return;
 
             if (newTexture == null)
@@ -315,9 +320,9 @@ namespace VisualNovel
         /// </summary>
         /// <param name="deleteAfterFade">是否在淡化完成后删除当前节点</param>
         /// <param name="immediate"></param>
-        public void ClearTexture(float duration, bool deleteAfterFade = false, bool immediate = false)
+        public virtual void ClearTexture(float duration, bool deleteAfterFade = false, bool immediate = false)
         {
-            if (Texture == null || _pendingDeletion) return;
+            if (Texture == null || _pendingDeletion || IsChild) return;
 
             SetTextureWithFade(GetEmptyTexture(Texture.GetSize()), duration: duration, immediate: immediate);
 
@@ -340,7 +345,7 @@ namespace VisualNovel
         /// 立即设置纹理为新纹理，不进行淡化过渡
         /// </summary>
         /// <param name="newTexture"></param>
-        public void SetTextureImmediately(Texture2D newTexture)
+        private void SetTextureImmediately(Texture2D newTexture)
         {
             if (newTexture == null || Texture == newTexture) return;
 
@@ -364,9 +369,9 @@ namespace VisualNovel
         /// <summary>
         /// 立即完成当前淡化过渡
         /// </summary>
-        public void CompleteFade()
+        public virtual void CompleteFade()
         {
-            if (_fadingTween != null && IsInstanceValid(_fadingTween)) return;
+            if ((_fadingTween != null && IsInstanceValid(_fadingTween)) || IsChild) return;
 
             SetProgress(1.0f);
             OnFadeComplete();
