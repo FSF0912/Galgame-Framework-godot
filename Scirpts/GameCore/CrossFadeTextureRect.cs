@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.Intrinsics.Arm;
 using Godot;
 
 namespace VisualNovel
@@ -62,14 +63,11 @@ namespace VisualNovel
 
         public CrossFadeTextureRect() { }
 
-        public CrossFadeTextureRect(TextureParams initParams) : this(null, initParams) { }
-
-        public CrossFadeTextureRect(string initTexPath = null,
+        public CrossFadeTextureRect(
         TextureParams initParams = default, bool isChild = false)
         {
             TextureParams = initParams;
             SetAnchorsAndOffsetsPreset(initParams.layoutPreset, LayoutPresetMode.KeepSize);
-            Texture = GD.Load<Texture2D>(initTexPath) ?? GetEmptyTexture(initParams.size);
             Position = initParams.position;
             RotationDegrees = initParams.rotation_degrees;
             Size = initParams.size;

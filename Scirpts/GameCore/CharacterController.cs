@@ -6,10 +6,22 @@ namespace VisualNovel
     {
         private CrossFadeTextureRect _face;
         private CrossFadeTextureRect _effect;
+        
+        string init_chara_name;
+        string init_chara_portrait_name;
+        string init_chara_face_name;
+        string init_chara_effect_name;
 
-        public CharacterController(TextureParams textureParams = default) : base(initParams: textureParams)
+        public CharacterController(string chara_name,
+        string chara_portrait_name,
+        string chara_face_name,
+        string chara_effect_name,
+        TextureParams initParams) : base(initParams: initParams, isChild: false)
         {
-            
+            init_chara_name = chara_name;
+            init_chara_portrait_name = chara_portrait_name;
+            init_chara_face_name = chara_face_name;
+            init_chara_effect_name = chara_effect_name;
         }
 
         public override void _Ready()
@@ -28,6 +40,22 @@ namespace VisualNovel
                 Name = "Effect",
                 ZIndex = 2 // 确保特效在脸部之上
             };
+            AddChild(_effect);
+
+            if (!string.IsNullOrWhiteSpace(init_chara_name))
+            {
+                SetBody(init_chara_name, init_chara_portrait_name, init_chara_face_name, duration: 0, immediate: false);
+
+                if (!string.IsNullOrWhiteSpace(init_chara_effect_name))
+                {
+                    SetEffect(init_chara_name, init_chara_effect_name, duration: 0, immediate: false);
+                }
+            }
+
+            init_chara_name = null;
+            init_chara_portrait_name = null;
+            init_chara_face_name = null;
+            init_chara_effect_name = null;
         }
 
         #region  override Methods
@@ -56,7 +84,11 @@ namespace VisualNovel
         }
         #endregion
 
-        public void SetBody(string chara_name, string chara_portrait_name, string chara_face_name, float duration = -1, bool immediate = false)
+        public void SetBody(string chara_name,
+        string chara_portrait_name,
+        string chara_face_name,
+        string chara_effect_name = null,
+        float duration = -1, bool immediate = false)
         {
             if (GlobalSettings.CharacterList.Find(c => c.SymbolizedName == chara_name) is CharacterMacro chara)
             {
@@ -64,6 +96,15 @@ namespace VisualNovel
                 {
                     base.SetTextureWithFade(portPath, duration, immediate);
                     _face.SetTextureWithFade(facePath, duration, immediate);
+
+                    if (!string.IsNullOrWhiteSpace(chara_effect_name) && chara.TryGetEffect(chara_effect_name, out string effectPath))
+                    {
+                        _effect.SetTextureWithFade(effectPath, duration, immediate);
+                    }
+                    else
+                    {
+                        _effect.ClearTexture(duration, deleteAfterFade: true, immediate: immediate);
+                    }
                 }
                 else
                 {

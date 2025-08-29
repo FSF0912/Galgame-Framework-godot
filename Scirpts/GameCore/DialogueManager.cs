@@ -72,9 +72,6 @@ namespace VisualNovel
 			SceneActiveTextures.Add(-100, BackGroundTexture);
 			SceneActiveTextures.Add(-200, AvatarTexture);
 
-			typeWriter.StartTyping += EnableDialogueSign;
-			typeWriter.OnComplete += DisableDialogueSign;
-
 			BeforeExecuteStart += AutoplayRegistered_BeforeExecuteStart;
 			ExecuteComplete += AutoplayRegistered_ExecuteComplete;
 
@@ -86,8 +83,6 @@ namespace VisualNovel
 		public override void _ExitTree()
 		{
 			base._ExitTree();
-			typeWriter.StartTyping -= EnableDialogueSign;
-			typeWriter.OnComplete -= DisableDialogueSign;
 			Instance = null;
 		}
 
@@ -119,7 +114,7 @@ namespace VisualNovel
 		{
 			if (SceneActiveTextures.TryGetValue(id, out CrossFadeTextureRect value)) return value;
 
-			var textureRef = new CrossFadeTextureRect(textureParams ?? TextureParams.DefaultPortraitNormalDistance)
+			var textureRef = new CrossFadeTextureRect(textureParams)
 			{ Name = $"Texture_{id}" };
 
 			TextureContainer.AddChild(textureRef);
@@ -130,6 +125,7 @@ namespace VisualNovel
 
 			return textureRef;
 		}
+
 
 		public CrossFadeTextureRect CreateTexture(int id, float duration, TextureParams textureParams = null, string defaultTexPath = null, bool immediate = false)
 		{
@@ -142,13 +138,39 @@ namespace VisualNovel
 			SceneActiveTextures.Add(id, textureRef);
 
 			if (!string.IsNullOrWhiteSpace(defaultTexPath))
-				textureRef.SetTextureWithFade(defaultTexPath, duration:duration, immediate: immediate, ZIndex: id);
+				textureRef.SetTextureWithFade(defaultTexPath, duration: duration, immediate: immediate, ZIndex: id);
 
 			return textureRef;
 		}
 
-		private void EnableDialogueSign() { }
-		private void DisableDialogueSign() { }
+		public CharacterController CreateCharacter(
+			int id,
+			float duration,
+			string chara_name,
+			string init_chara_portrait_name,
+			string init_chara_face_name,
+			string init_chara_effect_name,
+			//TextureParams textureParams = null,
+			bool immediate = false)
+		{
+			if (SceneActiveTextures.TryGetValue(id, out CrossFadeTextureRect value) && value is CharacterController existingCharacter)
+				return existingCharacter;
+
+			var chara = new CharacterController(
+				chara_name,
+				init_chara_portrait_name,
+				init_chara_face_name,
+				init_chara_effect_name,
+				TextureParams.DefaultPortraitNormalDistance);
+
+			chara.Name = new(chara_name);
+
+			TextureContainer.AddChild(chara);
+			SceneActiveTextures.Add(id, chara);
+
+			return chara;
+		}
+
 
 		#region Audio Control
 

@@ -180,9 +180,100 @@ namespace VisualNovel
         }
     }
 
+    public struct CharacterLine : IDialogueCommand
+    {
+        public enum CharacterMode { Set, Clear, Delete, Move }
+
+        public int ID;
+        public CharacterMode characterMode;
+        public string chara_name;
+        public string chara_portrait_name;
+        public string chara_face_name;
+        public string chara_effect_name;
+        public float fadeDuration = -1.0f;
+        public Vector2? targetPosition;
+
+        public CharacterLine(CharacterMode mode,
+        string chara_name = null,
+        string chara_portrait_name = null,
+        string chara_face_name = null,
+        string chara_effect_name = null,
+        Vector2? targetPosition = null,
+        float fadeDuration = -1.0f)
+        {
+            //get a unique ID for the character
+            unchecked
+            {
+                int hash = 5381;
+                foreach (char c in chara_name)
+                {
+                    hash = (hash << 5) + hash + char.ToUpperInvariant(c);
+                }
+                ID =  hash & 0x7FFFFFFF;
+            }
+
+            characterMode = mode;
+            this.chara_name = chara_name;
+            this.chara_portrait_name = chara_portrait_name;
+            this.chara_face_name = chara_face_name;
+            this.fadeDuration = fadeDuration <= 0 ? GlobalSettings.AnimationDefaultTime : fadeDuration;
+
+        }
+
+        public void Execute(DialogueManager dm)
+        {
+            if (dm.SceneActiveTextures.TryGetValue(ID, out var targetRef) && targetRef is CharacterController characterRef)
+            {
+                switch (characterMode)
+                {
+                    case CharacterMode.Set:
+                        characterRef.SetBody(chara_name, chara_portrait_name, chara_face_name, chara_effect_name, fadeDuration, immediate: false);
+                        break;
+                    case CharacterMode.Clear:
+                        characterRef.ClearTexture(fadeDuration);
+                        break;
+                    case CharacterMode.Delete:
+                        dm.SceneActiveTextures.Remove(ID);
+                        characterRef.ClearTexture(fadeDuration, deleteAfterFade: true);
+                        break;
+                    case CharacterMode.Move:
+                        characterRef.Animator.AddMove(targetPosition ?? Vector2.Zero, fadeDuration, isRelative: false);
+                        break;
+                }
+            }
+            else
+            {
+                if (characterMode == CharacterMode.Delete || characterMode == CharacterMode.Clear) return;
+                dm.CreateCharacter(ID, fadeDuration, chara_name, chara_portrait_name, chara_face_name, chara_effect_name, immediate: false);
+            }
+        }
+
+        public void Interrupt(DialogueManager dm)
+        {
+            if (dm.SceneActiveTextures.TryGetValue(ID, out var targetRef))
+            {
+                targetRef.CompleteFade();
+            }
+        }
+
+        public void Skip(DialogueManager dm)
+        {
+            if (dm.SceneActiveTextures.TryGetValue(ID, out var targetRef) && targetRef is CharacterController characterRef)
+            {
+                switch (characterMode)
+                {
+                    case CharacterMode.Set:
+                        characterRef.SetBody(chara_name, chara_portrait_name, chara_face_name, immediate: true);
+                        break;
+                    
+                }
+            }
+        }
+    }
+
     public struct TextureAnimationLine : IDialogueCommand
     {
-        public enum AnimationType : byte { Move, Rotate, Scale, Shake, ColorTint, Fade, Default}
+        public enum AnimationType : byte { Move, Rotate, Scale, Shake, ColorTint, Fade, Default }
         public int ID;
         public AnimationType animationType;
 
