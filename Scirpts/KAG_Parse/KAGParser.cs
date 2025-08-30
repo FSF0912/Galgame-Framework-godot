@@ -9,13 +9,6 @@ namespace VisualNovel
 {
     public static class KagParser
     {
-        // 使用正则表达式来解析 key="value" 或 key=value 格式的参数
-        // 核心逻辑:
-        // ([a-zA-Z0-9_]+)  : 匹配并捕获参数名 (键)
-        // \s*=\s* : 匹配等号，允许前后有任意空格
-        // (?: ... | ...)    : 匹配两种可能的值格式
-        //   "([^"]*)"      : 格式1: 匹配并捕获双引号内的所有内容
-        //   (\S+)          : 格式2: 匹配并捕获一个不含空格的连续字符串
         private static readonly Regex ParamRegex = new Regex(@"([a-zA-Z0-9_]+)(?:\s*=\s*(?:""([^""]*)""|(\S+)))?", RegexOptions.Compiled);
 
         public static List<DialogueLine> ParseScript(string scenarioPath)
@@ -79,7 +72,8 @@ namespace VisualNovel
             switch (commandName)
             {
                 case "p": // 换页指令
-                case "endlink": // 兼容旧指令
+                case "endlink":
+                case "cm][r":
                     if (currentCommands.Count > 0)
                     {
                         mainResults.Add(new DialogueLine(currentCommands));
@@ -120,6 +114,22 @@ namespace VisualNovel
                 
                 case "anim":
                     HandleAnimTag(parameters, lineNumber, line, ref currentCommands);
+                    break;
+
+                case "chara_show":
+                    HandleCharaShowTag(parameters, lineNumber, line, ref currentCommands);
+                    break;
+                
+                case "chara_hide":
+                    HandleCharaHideTag(parameters, lineNumber, line, ref currentCommands);
+                    break; 
+
+                case "chara_mod":
+                    HandleCharaModTag(parameters, lineNumber, line, ref currentCommands);
+                    break;
+                
+                case "chara_move":
+                    HandleCharaMoveTag(parameters, lineNumber, line, ref currentCommands);
                     break;
                 
                 default:
@@ -349,10 +359,95 @@ namespace VisualNovel
             ));
         }
 
+        private static void HandleCharaShowTag(Dictionary<string, string> parameters, int lineNumber, string line, ref List<IDialogueCommand> commands)
+        {
+            if (!TryGetStringParam(parameters, "name", out var name, lineNumber, line) ||
+                !TryGetIntParam(parameters, "layer", out var layer, lineNumber, line))
+            {
+                return;
+            }
+
+            parameters.TryGetValue("face", out var face);
+            face ??= "DEFAULT";
+
+            parameters.TryGetValue("body", out var body);
+            body ??= "DEFAULT";
+
+            if (!TryGetFloatParam(parameters, "time", out var time, lineNumber, line))
+            {
+                time = GlobalSettings.AnimationDefaultTime;
+            }
+
+            Vector2? position = null;
+            if (TryGetFloatParam(parameters, "x", out var x, lineNumber, line) && TryGetFloatParam(parameters, "y", out var y, lineNumber, line))
+            {
+                position = new Vector2(x, y);
+            }
+            else if (parameters.ContainsKey("left"))
+            {
+                position = GlobalSettings.LeftPosition;
+            }
+            else if (parameters.ContainsKey("center"))
+            {
+                position = GlobalSettings.CenterPosition;
+            }
+            else if (parameters.ContainsKey("right"))
+            {
+                position = GlobalSettings.RightPosition;
+            }
+
+            var charaLine = new CharacterLine(layer, CharacterLine.CharacterMode.SetBody, chara_name: name, chara_portrait_name: body, chara_face_name: face, fadeDuration: time / 1000, targetPosition: position);
+            commands.Add(charaLine);
+           
+        }
+
+        private static void HandleCharaHideTag(Dictionary<string, string> parameters, int lineNumber, string line, ref List<IDialogueCommand> commands)
+        {
+            if (TryGetStringParam(parameters, "name", out var name, lineNumber, line))
+            {
+                if (!TryGetFloatParam(parameters, "time", out var time, lineNumber, line))
+                {
+                    time = GlobalSettings.AnimationDefaultTime;
+                }
+                bool delete = parameters.ContainsKey("delete");
+                // ID未知，传入-1，在运行时通过name查找
+                    commands.Add(new CharacterLine(-1, delete ? CharacterLine.CharacterMode.Delete : CharacterLine.CharacterMode.Clear, chara_name: name, fadeDuration: time / 1000f));
+            }
+        }
+
+        private static void HandleCharaModTag(Dictionary<string, string> parameters, int lineNumber, string line, ref List<IDialogueCommand> commands)
+        {
+            if (TryGetStringParam(parameters, "name", out var name, lineNumber, line) &&
+                TryGetStringParam(parameters, "face", out var face, lineNumber, line))
+            {
+                if (!TryGetFloatParam(parameters, "time", out var time, lineNumber, line))
+                {
+                    time = GlobalSettings.AnimationDefaultTime;
+                }
+                // ID未知，传入-1，在运行时通过name和face查找并修改
+                commands.Add(new CharacterLine(-1, CharacterLine.CharacterMode.SetFace, chara_name: name, fadeDuration: time / 1000f, chara_face_name: face));
+            }
+        }
+        
+        private static void HandleCharaMoveTag(Dictionary<string, string> parameters, int lineNumber, string line, ref List<IDialogueCommand> commands)
+        {
+            if (TryGetStringParam(parameters, "name", out var name, lineNumber, line) &&
+                TryGetFloatParam(parameters, "x", out var x, lineNumber, line) &&
+                TryGetFloatParam(parameters, "y", out var y, lineNumber, line))
+            {
+                if (!TryGetFloatParam(parameters, "time", out var time, lineNumber, line))
+                {
+                    time = GlobalSettings.AnimationDefaultTime;
+                }
+                // ID未知，传入-1，在运行时通过name查找并移动
+                commands.Add(new CharacterLine(-1, CharacterLine.CharacterMode.Move, chara_name: name, fadeDuration: time / 1000f, targetPosition: new Vector2(x, y)));
+            }
+        }
+
         #endregion
 
         #region Parameter Helper
-        
+
         // 尝试获取字符串参数，如果缺少则报错
         private static bool TryGetStringParam(Dictionary<string, string> parameters, string key, out string value, int lineNumber, string line)
         {
@@ -391,7 +486,7 @@ namespace VisualNovel
                 }
                 GD.PrintErr($"错误 (行 {lineNumber}): 参数 '{key}' 的值 '{strValue}' 不是一个有效的浮点数。 行内容: '{line}'");
             }
-            value = 0f;
+            value = -1f;
             return false;
         }
 

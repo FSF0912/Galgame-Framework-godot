@@ -45,5 +45,9 @@ namespace VisualNovel
         {
 
         };
+
+        public static readonly Vector2 LeftPosition = new Vector2(0.25f, 1);
+        public static readonly Vector2 CenterPosition = new Vector2(0.5f, 1);
+        public static readonly Vector2 RightPosition = new Vector2(0.75f, 1);
     }
 }

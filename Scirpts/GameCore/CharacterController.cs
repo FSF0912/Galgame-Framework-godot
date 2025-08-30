@@ -27,6 +27,7 @@ namespace VisualNovel
         public override void _Ready()
         {
             base._Ready();
+            ZIndex = 5;
 
             _face = new CrossFadeTextureRect(initParams: TextureParams, isChild: true)
             {

@@ -142,7 +142,8 @@ namespace VisualNovel
             else
             {
                 if (textureMode == TextureMode.Delete || textureMode == TextureMode.Clear) return;
-                dm.CreateTexture(ID, fadeDuration, defaultTexPath:targetTexturePath);
+                dm.CreateTexture(ID, fadeDuration, defaultTexPath: targetTexturePath);
+                Execute(DialogueManager.Instance);
             }
         }
 
@@ -161,10 +162,10 @@ namespace VisualNovel
                 switch (textureMode)
                 {
                     case TextureMode.Switch:
-                        targetRef.SetTextureWithFade(targetTexturePath, immediate:true);
+                        targetRef.SetTextureWithFade(targetTexturePath, immediate: true);
                         break;
                     case TextureMode.Clear:
-                        targetRef.SetTextureWithFade(string.Empty, immediate:true);
+                        targetRef.SetTextureWithFade(string.Empty, immediate: true);
                         break;
                     case TextureMode.Delete:
                         dm.SceneActiveTextures.Remove(ID);
@@ -175,14 +176,15 @@ namespace VisualNovel
             else
             {
                 if (textureMode == TextureMode.Delete || textureMode == TextureMode.Clear) return;
-                dm.CreateTexture(ID, 0, defaultTexPath:targetTexturePath, immediate:true);
+                dm.CreateTexture(ID, 0, defaultTexPath: targetTexturePath, immediate: true);
+                Skip(DialogueManager.Instance);
             }
         }
     }
 
     public struct CharacterLine : IDialogueCommand
     {
-        public enum CharacterMode { Set, Clear, Delete, Move }
+        public enum CharacterMode { SetBody, SetFace, SetEffect, Clear, Delete, Move }
 
         public int ID;
         public CharacterMode characterMode;
@@ -193,7 +195,7 @@ namespace VisualNovel
         public float fadeDuration = -1.0f;
         public Vector2? targetPosition;
 
-        public CharacterLine(CharacterMode mode,
+        public CharacterLine(int id, CharacterMode mode,
         string chara_name = null,
         string chara_portrait_name = null,
         string chara_face_name = null,
@@ -201,34 +203,47 @@ namespace VisualNovel
         Vector2? targetPosition = null,
         float fadeDuration = -1.0f)
         {
-            //get a unique ID for the character
-            unchecked
-            {
-                int hash = 5381;
-                foreach (char c in chara_name)
-                {
-                    hash = (hash << 5) + hash + char.ToUpperInvariant(c);
-                }
-                ID =  hash & 0x7FFFFFFF;
-            }
-
+            ID = id;
             characterMode = mode;
             this.chara_name = chara_name;
             this.chara_portrait_name = chara_portrait_name;
             this.chara_face_name = chara_face_name;
-            this.fadeDuration = fadeDuration <= 0 ? GlobalSettings.AnimationDefaultTime : fadeDuration;
+            this.chara_effect_name = chara_effect_name;
+            this.fadeDuration = fadeDuration;
+            this.targetPosition = targetPosition;
 
         }
 
         public void Execute(DialogueManager dm)
         {
+            if (ID < 0 && !string.IsNullOrWhiteSpace(chara_name))
+            {
+                foreach (var kvp in dm.SceneActiveTextures)
+                {
+                    if (kvp.Value is CharacterController c && c.Name == chara_name)
+                    {
+                        ID = kvp.Key;
+                        break;
+                    }
+                }
+            }
+
             if (dm.SceneActiveTextures.TryGetValue(ID, out var targetRef) && targetRef is CharacterController characterRef)
             {
                 switch (characterMode)
                 {
-                    case CharacterMode.Set:
+                    case CharacterMode.SetBody:
                         characterRef.SetBody(chara_name, chara_portrait_name, chara_face_name, chara_effect_name, fadeDuration, immediate: false);
                         break;
+
+                    case CharacterMode.SetFace:
+                        characterRef.SetFace(chara_name, chara_face_name, fadeDuration, immediate: false);
+                        break;
+
+                    case CharacterMode.SetEffect:
+                        characterRef.SetEffect(chara_name, chara_effect_name, fadeDuration, immediate: false);
+                        break;
+
                     case CharacterMode.Clear:
                         characterRef.ClearTexture(fadeDuration);
                         break;
@@ -237,7 +252,8 @@ namespace VisualNovel
                         characterRef.ClearTexture(fadeDuration, deleteAfterFade: true);
                         break;
                     case CharacterMode.Move:
-                        characterRef.Animator.AddMove(targetPosition ?? Vector2.Zero, fadeDuration, isRelative: false);
+                        if (targetPosition == null) break;
+                        characterRef.Animator.AddMove(targetPosition.Value, fadeDuration, isRelative: false);
                         break;
                 }
             }
@@ -245,6 +261,7 @@ namespace VisualNovel
             {
                 if (characterMode == CharacterMode.Delete || characterMode == CharacterMode.Clear) return;
                 dm.CreateCharacter(ID, fadeDuration, chara_name, chara_portrait_name, chara_face_name, chara_effect_name, immediate: false);
+                Execute(DialogueManager.Instance);
             }
         }
 
@@ -262,11 +279,23 @@ namespace VisualNovel
             {
                 switch (characterMode)
                 {
-                    case CharacterMode.Set:
+                    case CharacterMode.SetBody:
                         characterRef.SetBody(chara_name, chara_portrait_name, chara_face_name, immediate: true);
                         break;
-                    
+                    case CharacterMode.SetFace:
+                        characterRef.SetFace(chara_name, chara_face_name, immediate: true);
+                        break;
+                    case CharacterMode.SetEffect:
+                        characterRef.SetEffect(chara_name, chara_effect_name, immediate: true);
+                        break;
+
                 }
+            }
+            else
+            {
+                if (characterMode == CharacterMode.Delete || characterMode == CharacterMode.Clear) return;
+                dm.CreateCharacter(ID, 0, chara_name, chara_portrait_name, chara_face_name, chara_effect_name, immediate: true);
+                Skip(DialogueManager.Instance);
             }
         }
     }
