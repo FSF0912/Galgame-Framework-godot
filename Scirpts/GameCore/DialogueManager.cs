@@ -36,8 +36,8 @@ namespace VisualNovel
 		[ExportGroup("References")]
 		[Export] public Label SpeakerNameLabel;
 		[Export] public TypeWriter typeWriter;
-		[Export] public CrossFadeTextureRect BackGroundTexture;
-		[Export] public CrossFadeTextureRect AvatarTexture;
+		[Export] public VNTextureRect BackGroundTexture;
+		[Export] public VNTextureRect AvatarTexture;
 		[Export] public Control TextureContainer;
 		[Export] public Control BranchContainer;
 		[Export] public PackedScene BranchButtonScene;
@@ -46,7 +46,7 @@ namespace VisualNovel
 		[Export] public bool AllowInput = true;
 
 		DialogueLine _currentDialogueLine;
-		public readonly Dictionary<int, CrossFadeTextureRect> SceneActiveTextures = [];
+		public readonly Dictionary<int, VNTextureRect> SceneActiveTextures = [];
 
 		public override void _EnterTree()
 		{
@@ -110,11 +110,11 @@ namespace VisualNovel
 		}
 
 
-		public CrossFadeTextureRect CreateTexture(int id, float duration, TextureParams textureParams = null, Texture2D defaultTex = null, bool immediate = false)
+		public VNTextureRect CreateTexture(int id, float duration, TextureParams textureParams = null, Texture2D defaultTex = null, bool immediate = false)
 		{
-			if (SceneActiveTextures.TryGetValue(id, out CrossFadeTextureRect value)) return value;
+			if (SceneActiveTextures.TryGetValue(id, out VNTextureRect value)) return value;
 
-			var textureRef = new CrossFadeTextureRect(textureParams)
+			var textureRef = new VNTextureRect(textureParams)
 			{ Name = $"Texture_{id}" };
 
 			TextureContainer.AddChild(textureRef);
@@ -127,11 +127,11 @@ namespace VisualNovel
 		}
 
 
-		public CrossFadeTextureRect CreateTexture(int id, float duration, TextureParams textureParams = null, string defaultTexPath = null, bool immediate = false)
+		public VNTextureRect CreateTexture(int id, float duration, TextureParams textureParams = null, string defaultTexPath = null, bool immediate = false)
 		{
-			if (SceneActiveTextures.TryGetValue(id, out CrossFadeTextureRect value)) return value;
+			if (SceneActiveTextures.TryGetValue(id, out VNTextureRect value)) return value;
 
-			var textureRef = new CrossFadeTextureRect(textureParams ?? TextureParams.DefaultPortraitNormalDistance)
+			var textureRef = new VNTextureRect(textureParams ?? TextureParams.DefaultPortraitNormalDistance)
 			{ Name = $"Texture_{id}" };
 
 			TextureContainer.AddChild(textureRef);
@@ -153,7 +153,7 @@ namespace VisualNovel
 			//TextureParams textureParams = null,
 			bool immediate = false)
 		{
-			if (SceneActiveTextures.TryGetValue(id, out CrossFadeTextureRect value) && value is CharacterController existingCharacter)
+			if (SceneActiveTextures.TryGetValue(id, out VNTextureRect value) && value is CharacterController existingCharacter)
 				return existingCharacter;
 
 			var chara = new CharacterController(
@@ -179,10 +179,10 @@ namespace VisualNovel
 
 		public void PlayBGM(string path, bool loop = true)
 		{
-			var audioStream = GD.Load<AudioStream>(path);
+			var audioStream = VNResloader.LoadAudio(path);
 			if (audioStream == null) return;
 
-			StopAndClearStream(_BGMPlayer);
+			StopAudio(_BGMPlayer);
 			_BGMPlayer.Stream = audioStream;
 			_BGMPlayer.VolumeDb = 0;
 			HandleLooping(audioStream, loop);
@@ -202,11 +202,11 @@ namespace VisualNovel
 				_BGMFadeTween.TweenProperty(_BGMPlayer, "volume_db", -80f,
 				fadeDuration > 0 ? fadeDuration : GlobalSettings.AnimationDefaultTime).
 				SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
-				_BGMFadeTween.TweenCallback(Callable.From(() => StopAndClearStream(_BGMPlayer)));
+				_BGMFadeTween.TweenCallback(Callable.From(() => StopAudio(_BGMPlayer)));
 			}
 			else
 			{
-				StopAndClearStream(_BGMPlayer);
+				StopAudio(_BGMPlayer);
 			}
 		}
 
@@ -215,7 +215,8 @@ namespace VisualNovel
 			var audioStream = GD.Load<AudioStream>(path);
 			if (audioStream == null) return;
 
-			StopAndClearStream(_VoicePlayer);
+			StopAudio(_VoicePlayer);
+			_VoicePlayer.Stream?.Dispose();
 			_VoicePlayer.Stream = audioStream;
 			HandleLooping(audioStream, loop);
 			_VoicePlayer.Play();
@@ -223,16 +224,16 @@ namespace VisualNovel
 
 		public void StopVoice()
 		{
-			StopAndClearStream(_VoicePlayer);
+			StopAudio(_VoicePlayer);
 		}
 
 
 		public void PlaySE(string path, bool loop = false)
 		{
-			var audioStream = GD.Load<AudioStream>(path);
+			var audioStream = VNResloader.LoadAudio(path);
 			if (audioStream == null) return;
 
-			StopAndClearStream(_SEPlayer);
+			StopAudio(_SEPlayer);
 			_SEPlayer.Stream = audioStream;
 			HandleLooping(audioStream, loop);
 			_SEPlayer.Play();
@@ -240,7 +241,7 @@ namespace VisualNovel
 
 		public void StopSE()
 		{
-			StopAndClearStream(_SEPlayer);
+			StopAudio(_SEPlayer);
 		}
 
 		private void HandleLooping(AudioStream stream, bool loop)
@@ -261,12 +262,11 @@ namespace VisualNovel
 			}
 		}
 
-		private void StopAndClearStream(AudioStreamPlayer player)
+		private void StopAudio(AudioStreamPlayer player)
 		{
 			if (player == null) return;
 
 			player.Stop();
-			player.Stream?.Dispose();
 			player.Stream = null;
 		}
 		#endregion
