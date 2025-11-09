@@ -69,6 +69,16 @@ namespace VisualNovel
         };
 
         /// <summary>
+        /// 模糊Shader路径
+        /// </summary>
+        private const string BLUR_SHADER_PATH = "res://VisualNovel/Shaders/blur.gdshader";
+
+        /// <summary>
+        /// 用来模糊的材质
+        /// </summary>
+        private Material _blurMaterial;
+
+        /// <summary>
         /// 纹理参数
         /// </summary>
         public TextureParams TextureParams { get; private set; }
@@ -89,14 +99,33 @@ namespace VisualNovel
         /// </summary>
         private Texture2D _transitionTex;
 
-        //public VNTextureRect() { }
+        /// <summary>
+        /// 动画控制器
+        /// </summary>
+        public TextureAnimator Animator { get; private set; }
+
+        /// <summary>
+        /// 实例化该类时使用的默认图片，只在第一次设置图片时使用
+        /// </summary>
+        string init_TexturePath = "";
+        /// <summary>
+        /// 实例化该类时使用的默认过渡类型, 仅在第一次设置图片时使用
+        /// </summary>
+        TranslationType init_TranslationType = TranslationType.Immediate;
+        /// <summary>
+        /// 实例化该类时使用的默认ZIndex，仅在第一次设置图片时使用
+        /// </summary>
+        int init_ZIndex = 1;
 
         /// <summary>
         /// init params
         /// </summary>
         /// <param name="initParams"></param>
         public VNTextureRect(
-        TextureParams initParams)
+        TextureParams initParams,
+        string initTexturePath = "",
+        TranslationType initTranslationType = TranslationType.Immediate,
+        int initZIndex = 1)
         {
             if (initParams == null) initParams = TextureParams.DefaultTexture;
             TextureParams = initParams;
@@ -106,12 +135,33 @@ namespace VisualNovel
             Size = initParams.size;
             ExpandMode = initParams.expandMode;
             StretchMode = initParams.stretchMode;
+            this.init_TexturePath = initTexturePath;
+            this.init_TranslationType = initTranslationType;
+            this.init_ZIndex = initZIndex;
         }
 
         public override void _Ready()
         {
             base._Ready();
             CheckCrossFadeTex();
+
+            var blurShader = GD.Load<Shader>(BLUR_SHADER_PATH);
+            if (blurShader != null)
+            {
+                _blurMaterial = new ShaderMaterial()
+                {
+                    Shader = blurShader
+                };
+            }
+            else
+            {
+                GD.PrintErr($"[VNTextureRect] Failed to load blur shader from path: {BLUR_SHADER_PATH}");
+            }
+
+            Animator = new TextureAnimator(this);
+            AddChild(Animator);
+
+            SetTexture(init_TexturePath, init_TranslationType, GlobalSettings.AnimationDefaultTime, init_ZIndex);
         }
 
         /*public override void _ExitTree()
@@ -128,15 +178,16 @@ namespace VisualNovel
         /// <param name="path">图片路径</param>
         /// <param name="setType">过渡效果</param>
         /// <param name="duration">在过渡效果不为immediate时的过渡时间</param>
-        public virtual void SetTexture(string path, TranslationType setType = TranslationType.Immediate, float duration = 0.5f)
+        public virtual void SetTexture(string path, TranslationType setType = TranslationType.Immediate, float duration = 0.5f, int zIndex = 1)
         {
             _currentTranslationType = setType;
             ClearTween();
             var newTex = VNResloader.LoadTexture2D(path);
+            this.ZIndex = zIndex;
 
             if (newTex == null)
             {
-                GD.PrintErr($"Failed to load texture from {path} by VNTextureRect.\n{this}");
+                //GD.PushWarning($"[VNTextureRect] Failed to load texture from path: {path}");
                 return;
             }
 
@@ -208,6 +259,36 @@ namespace VisualNovel
 
         }
 
+        public virtual void SetBlur()
+        {
+
+        }
+        
+        public virtual void ClearTexture(float duration = -1, bool immediate = false, bool deleteAfterFade = false)
+        {
+            ClearTween();
+            if (immediate)
+            {
+                Texture = null;
+                SetCrossFadeTexActive(false);
+                _fadingRect.Modulate = Colors.Transparent;
+                if (deleteAfterFade) QueueFree();
+
+            }
+            else
+            {
+                duration = duration <= 0 ? GlobalSettings.AnimationDefaultTime : duration;
+                _tween = CreateTween();
+                _tween.TweenProperty(this, "modulate:a", 0, duration)
+                .SetTrans(Tween.TransitionType.Sine)
+                .SetEase(Tween.EaseType.InOut);
+                SetCrossFadeTexActive(false);
+                if (deleteAfterFade)  _tween.Finished += QueueFree;
+                
+            }
+            
+        }
+
         public virtual void InterruptTranslation()
         {
             if (_currentTranslationType == TranslationType.Immediate) return;
@@ -258,6 +339,7 @@ namespace VisualNovel
                     Scale = Vector2.One,
                     ExpandMode = ExpandModeEnum.KeepSize,
                     StretchMode = StretchModeEnum.KeepAspectCentered,
+                    AnchorsPreset = (int)LayoutPreset.FullRect,
                     Modulate = Colors.Transparent,
                     PivotOffset = PivotOffset
                 };

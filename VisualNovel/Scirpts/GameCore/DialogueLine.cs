@@ -13,36 +13,36 @@ namespace VisualNovel
             Commands = new (commands);
         }
 
-        public void Execute(DialogueManager dm)
+        public void Execute()
         {
             foreach (var command in Commands)
             {
-                command.Execute(dm);
+                command.Execute();
             }
         }
 
-        public void Interrupt(DialogueManager dm)
+        public void Interrupt()
         {
             foreach (var command in Commands)
             {
-                command.Interrupt(dm);
+                command.Interrupt();
             }
         }
 
-        public void Skip(DialogueManager dm)
+        public void Skip()
         {
             foreach (var command in Commands)
             {
-                command.Skip(dm);
+                command.Skip();
             }
         }
     }
 
     public interface IDialogueCommand
     {
-        public void Execute(DialogueManager dm);
-        public void Skip(DialogueManager dm);
-        public void Interrupt(DialogueManager dm);
+        public void Execute();
+        public void Skip();
+        public void Interrupt();
     }
 
     /*public interface IAnimative
@@ -74,19 +74,21 @@ namespace VisualNovel
             CheckContent();
         }
 
-        public void Execute(DialogueManager dm)
+        public void Execute()
         {
+            var dm = DialogueManager.Instance;
             dm.SpeakerNameLabel.Text = SpeakerName;
             dm.typeWriter.TypeText(SpeakContext);
         }
 
-        public void Interrupt(DialogueManager dm)
+        public void Interrupt()
         {
-            dm.typeWriter.Interrupt();
+            DialogueManager.Instance.typeWriter.Interrupt();
         }
 
-        public void Skip(DialogueManager dm)
+        public void Skip()
         {
+            var dm = DialogueManager.Instance;
             dm.typeWriter.TypeText(SpeakContext, true);
             dm.SpeakerNameLabel.Text = SpeakerName;
         }
@@ -110,62 +112,71 @@ namespace VisualNovel
 
         public int ID;
         public TextureMode textureMode;
+        public VNTextureRect.TranslationType translationType = VNTextureRect.TranslationType.CrossFade;
         public string targetTexturePath;
+        public bool immediate = false;
         public float fadeDuration = -1.0f;
 
-        public TextureLine(int id, TextureMode mode, string path = null, float fadeDuration = -1.0f)
+        public TextureLine(int id, TextureMode mode,
+        VNTextureRect.TranslationType translationType = VNTextureRect.TranslationType.CrossFade,
+        string path = null, float fadeDuration = -1.0f, bool immediate = false)
         {
             ID = id;
             textureMode = mode;
+            this.translationType = translationType;
             targetTexturePath = path;
             this.fadeDuration = fadeDuration <= 0 ? GlobalSettings.AnimationDefaultTime : fadeDuration; 
+            this.immediate = immediate;
         }
 
-        public void Execute(DialogueManager dm)
+        public void Execute()
         {
+            var dm = DialogueManager.Instance;
             if (dm.SceneActiveTextures.TryGetValue(ID, out var targetRef))
             {
                 switch (textureMode)
                 {
                     case TextureMode.Switch:
-                        targetRef.SetTextureWithFade(targetTexturePath, fadeDuration, immediate: false, ZIndex: ID);
+                        targetRef.SetTexture(path: targetTexturePath, setType: translationType, duration: fadeDuration, zIndex : ID);
                         break;
                     case TextureMode.Clear:
-                        targetRef.ClearTexture(fadeDuration);
+                        targetRef.ClearTexture(fadeDuration, immediate: immediate);
                         break;
                     case TextureMode.Delete:
                         dm.SceneActiveTextures.Remove(ID);
-                        targetRef.ClearTexture(fadeDuration, deleteAfterFade: true);
+                        targetRef.ClearTexture(fadeDuration, deleteAfterFade: true, immediate: immediate);
                         break;
                 }
             }
             else
             {
                 if (textureMode == TextureMode.Delete || textureMode == TextureMode.Clear) return;
-                dm.CreateTexture(ID, fadeDuration, defaultTexPath: targetTexturePath);
-                Execute(DialogueManager.Instance);
+                dm.CreateTextureRect(ID, fadeDuration, defaultTexPath: targetTexturePath);
+                Execute();
             }
         }
 
-        public void Interrupt(DialogueManager dm)
+        public void Interrupt()
         {
+            var dm = DialogueManager.Instance;
             if (dm.SceneActiveTextures.TryGetValue(ID, out var targetRef))
             {
-                targetRef.CompleteFade();
+                targetRef.InterruptTranslation();
             }
         }
 
-        public void Skip(DialogueManager dm)
+        public void Skip()
         {
+            var dm = DialogueManager.Instance;
             if (dm.SceneActiveTextures.TryGetValue(ID, out var targetRef))
             {
                 switch (textureMode)
                 {
                     case TextureMode.Switch:
-                        targetRef.SetTextureWithFade(targetTexturePath, immediate: true);
+                        targetRef.SetTexture(targetTexturePath, VNTextureRect.TranslationType.Immediate, zIndex: ID);
                         break;
                     case TextureMode.Clear:
-                        targetRef.SetTextureWithFade(string.Empty, immediate: true);
+                        targetRef.ClearTexture(immediate: true);
                         break;
                     case TextureMode.Delete:
                         dm.SceneActiveTextures.Remove(ID);
@@ -176,129 +187,13 @@ namespace VisualNovel
             else
             {
                 if (textureMode == TextureMode.Delete || textureMode == TextureMode.Clear) return;
-                dm.CreateTexture(ID, 0, defaultTexPath: targetTexturePath, immediate: true);
-                Skip(DialogueManager.Instance);
+                dm.CreateTextureRect(ID, 0, defaultTexPath: targetTexturePath, translationType: VNTextureRect.TranslationType.Immediate);
+                Skip();
             }
         }
     }
 
-    public struct CharacterLine : IDialogueCommand
-    {
-        public enum CharacterMode { SetBody, SetFace, SetEffect, Clear, Delete, Move }
-
-        public int ID;
-        public CharacterMode characterMode;
-        public string chara_name;
-        public string chara_portrait_name;
-        public string chara_face_name;
-        public string chara_effect_name;
-        public float fadeDuration = -1.0f;
-        public Vector2? targetPosition;
-
-        public CharacterLine(int id, CharacterMode mode,
-        string chara_name = null,
-        string chara_portrait_name = null,
-        string chara_face_name = null,
-        string chara_effect_name = null,
-        Vector2? targetPosition = null,
-        float fadeDuration = -1.0f)
-        {
-            ID = id;
-            characterMode = mode;
-            this.chara_name = chara_name;
-            this.chara_portrait_name = chara_portrait_name;
-            this.chara_face_name = chara_face_name;
-            this.chara_effect_name = chara_effect_name;
-            this.fadeDuration = fadeDuration;
-            this.targetPosition = targetPosition;
-
-        }
-
-        public void Execute(DialogueManager dm)
-        {
-            if (ID < 0 && !string.IsNullOrWhiteSpace(chara_name))
-            {
-                foreach (var kvp in dm.SceneActiveTextures)
-                {
-                    if (kvp.Value is CharacterController c && c.Name == chara_name)
-                    {
-                        ID = kvp.Key;
-                        break;
-                    }
-                }
-            }
-
-            if (dm.SceneActiveTextures.TryGetValue(ID, out var targetRef) && targetRef is CharacterController characterRef)
-            {
-                switch (characterMode)
-                {
-                    case CharacterMode.SetBody:
-                        characterRef.SetBody(chara_name, chara_portrait_name, chara_face_name, chara_effect_name, fadeDuration, immediate: false);
-                        break;
-
-                    case CharacterMode.SetFace:
-                        characterRef.SetFace(chara_name, chara_face_name, fadeDuration, immediate: false);
-                        break;
-
-                    case CharacterMode.SetEffect:
-                        characterRef.SetEffect(chara_name, chara_effect_name, fadeDuration, immediate: false);
-                        break;
-
-                    case CharacterMode.Clear:
-                        characterRef.ClearTexture(fadeDuration);
-                        break;
-                    case CharacterMode.Delete:
-                        dm.SceneActiveTextures.Remove(ID);
-                        characterRef.ClearTexture(fadeDuration, deleteAfterFade: true);
-                        break;
-                    case CharacterMode.Move:
-                        if (targetPosition == null) break;
-                        characterRef.Animator.AddMove(targetPosition.Value, fadeDuration, isRelative: false);
-                        break;
-                }
-            }
-            else
-            {
-                if (characterMode == CharacterMode.Delete || characterMode == CharacterMode.Clear) return;
-                dm.CreateCharacter(ID, fadeDuration, chara_name, chara_portrait_name, chara_face_name, chara_effect_name, immediate: false);
-                Execute(DialogueManager.Instance);
-            }
-        }
-
-        public void Interrupt(DialogueManager dm)
-        {
-            if (dm.SceneActiveTextures.TryGetValue(ID, out var targetRef))
-            {
-                targetRef.CompleteFade();
-            }
-        }
-
-        public void Skip(DialogueManager dm)
-        {
-            if (dm.SceneActiveTextures.TryGetValue(ID, out var targetRef) && targetRef is CharacterController characterRef)
-            {
-                switch (characterMode)
-                {
-                    case CharacterMode.SetBody:
-                        characterRef.SetBody(chara_name, chara_portrait_name, chara_face_name, immediate: true);
-                        break;
-                    case CharacterMode.SetFace:
-                        characterRef.SetFace(chara_name, chara_face_name, immediate: true);
-                        break;
-                    case CharacterMode.SetEffect:
-                        characterRef.SetEffect(chara_name, chara_effect_name, immediate: true);
-                        break;
-
-                }
-            }
-            else
-            {
-                if (characterMode == CharacterMode.Delete || characterMode == CharacterMode.Clear) return;
-                dm.CreateCharacter(ID, 0, chara_name, chara_portrait_name, chara_face_name, chara_effect_name, immediate: true);
-                Skip(DialogueManager.Instance);
-            }
-        }
-    }
+    
 
     public struct TextureAnimationLine : IDialogueCommand
     {
@@ -317,11 +212,13 @@ namespace VisualNovel
         public float? frequency;
         public Tween.TransitionType transitionType;
         public Tween.EaseType easeType;
+        public bool isParallel = true;
 
         public TextureAnimationLine(
             int id,
             AnimationType animationType,
             float duration,
+            bool isParallel =  true,
             Vector2? targetVector = null,
             bool? isRelative = true,
             bool? isLocal = true,
@@ -347,54 +244,88 @@ namespace VisualNovel
             this.frequency = frequency;
             this.transitionType = transitionType;
             this.easeType = easeType;
+            this.isParallel = isParallel;
         }
 
-        public void Execute(DialogueManager dm)
+        public void Execute()
         {
+            var dm = DialogueManager.Instance;
             if (dm.SceneActiveTextures.TryGetValue(ID, out var targetRef))
             {
-                duration = duration <= 0 ? GlobalSettings.AnimationDefaultTime : duration;
-                switch (animationType)
-                {
-                    case AnimationType.Move:
-                        targetRef.Animator.AddMove(targetVector ?? Vector2.Zero, duration, isRelative ?? false, transitionType, easeType);
-                        break;
-                    case AnimationType.Rotate:
-                        targetRef.Animator.AddRotate(RotationDegrees ?? 0, duration, isLocal ?? true, transitionType, easeType);
-                        break;
-                    case AnimationType.Scale:
-                        targetRef.Animator.AddScale(targetVector ?? Vector2.Zero, duration, transitionType, easeType);
-                        break;
-                    case AnimationType.Shake:
-                        targetRef.Animator.AddShake(intensity ?? 5, duration, frequency ?? 10, transitionType, easeType);
-                        break;
-                    case AnimationType.ColorTint:
-                        targetRef.Animator.AddColorTint(targetColor ?? Colors.White, duration, transitionType, easeType);
-                        break;
-                    case AnimationType.Fade:
-                        targetRef.Animator.AddFade(Alpha ?? 1, duration, transitionType, easeType);
-                        break;
-                }
+            duration = duration <= 0 ? GlobalSettings.AnimationDefaultTime : duration;
+            switch (animationType)
+            {
+                case AnimationType.Move:
+                targetRef.Animator.AddMove(
+                    value: targetVector ?? Vector2.Zero,
+                    duration: duration,
+                    parallel: isParallel,
+                    trans: transitionType,
+                    ease: easeType);
+                break;
+                case AnimationType.Rotate:
+                targetRef.Animator.AddRotate(
+                    degrees: RotationDegrees ?? 0,
+                    duration: duration,
+                    isLocal: isLocal ?? true,
+                    trans: transitionType,
+                    ease: easeType,
+                    parallel: isParallel);
+                break;
+                case AnimationType.Scale:
+                targetRef.Animator.AddScale(
+                    scale: targetVector ?? Vector2.Zero,
+                    duration: duration,
+                    trans: transitionType,
+                    ease: easeType,
+                    parallel: isParallel);
+                break;
+                case AnimationType.Shake:
+                targetRef.Animator.AddShake(
+                    intensity: intensity ?? 5,
+                    duration: duration,
+                    frequency: frequency ?? 10,
+                    trans: transitionType,
+                    ease: easeType,
+                    parallel: isParallel);
+                break;
+                case AnimationType.ColorTint:
+                targetRef.Animator.AddColorTint(
+                    target: targetColor ?? Colors.White,
+                    duration: duration,
+                    trans: transitionType,
+                    ease: easeType,
+                    parallel: isParallel);
+                break;
+                case AnimationType.Fade:
+                targetRef.Animator.AddFade(
+                    alpha: Alpha ?? 1,
+                    duration: duration,
+                    trans: transitionType,
+                    ease: easeType,
+                    parallel: isParallel);
+                break;
+            }
             }
         }
 
-        public void Interrupt(DialogueManager dm)
+        public void Interrupt()
         {
-            if (dm.SceneActiveTextures.TryGetValue(ID, out var targetRef))
+            if (DialogueManager.Instance.SceneActiveTextures.TryGetValue(ID, out var targetRef))
             {
                 targetRef.Animator.CompleteAnimations();
             }
         }
 
-        public void Skip(DialogueManager dm)
+        public void Skip()
         {
-            if (dm.SceneActiveTextures.TryGetValue(ID, out var targetRef))
+            if (DialogueManager.Instance.SceneActiveTextures.TryGetValue(ID, out var targetRef))
             {
                 switch (animationType)
                 {
                     case AnimationType.Shake:
                     case AnimationType.Move:
-                        targetRef.Animator.AddMoveImmediately(targetVector ?? Vector2.Zero, isRelative ?? false);
+                        targetRef.Animator.AddMoveImmediately(targetVector ?? Vector2.Zero);
                         break;
                     case AnimationType.Rotate:
                         targetRef.Animator.AddRotateImmediately(RotationDegrees ?? 0, isLocal ?? true);
@@ -415,76 +346,85 @@ namespace VisualNovel
 
     public struct Audioline : IDialogueCommand
     {
-        public enum AudioType { BGM, Voice, SE }
-        public enum AudioPlayType { Play, Stop} 
+        public enum AudioType { BGM, Voice, SFX }
+        public enum AudioPlayType { Play, Stop } 
 
         public AudioType audioType;
         public AudioPlayType audioPlayType;
         public string audioPath;
         public bool loop = false;
-        public bool smoothStop = false;
-        public float fadeDuration = -1.0f;
+        public Vector2 normalizedPosition = Vector2.Zero;
+        public float voice_volumeDb = 0f;
+        public float duration = -1.0f;
 
-        public Audioline(AudioType type, AudioPlayType audioPlayType, string path, bool loop = false, bool smoothStop = false, float fadeDuration = -1.0f)
+        public Audioline(AudioType type, AudioPlayType audioPlayType,
+        string path,
+        bool loop = false,
+        Vector2 normalizedPosition = default,
+        float voice_volumeDb = 0f,
+        float fadeDuration = -1.0f)
         {
             audioType = type;
             this.audioPlayType = audioPlayType;
             audioPath = path;
             this.loop = loop;
-            this.smoothStop = smoothStop;
-            this.fadeDuration = fadeDuration;
+            this.normalizedPosition = normalizedPosition;
+            this.voice_volumeDb = voice_volumeDb;
+            this.duration = fadeDuration;
         }
 
-        public void Execute(DialogueManager dm)
+        public void Execute()
         {
+            var am = AudioManager.Instance;
             switch (audioType)
             {
                 case AudioType.BGM:
                     if (audioPlayType == AudioPlayType.Play)
                     {
-                        dm.PlayBGM(audioPath, loop);
+                        am.PlayBGM(audioPath, duration, loop : loop);
                     }
                     else if (audioPlayType == AudioPlayType.Stop)
                     {
-                        dm.StopBGM(smoothStop, fadeDuration);
+                        am.StopBGM(duration);
                     }
                     break;
 
                 case AudioType.Voice:
                     if (audioPlayType == AudioPlayType.Play)
                     {
-                        dm.PlayVoice(audioPath, loop);
+                        am.PlayVoice(audioPath, normalizedPosition, voice_volumeDb);
                     }
                     break;
 
-                case AudioType.SE:
+                case AudioType.SFX:
                     if (audioPlayType == AudioPlayType.Play)
                     {
-                        dm.PlaySE(audioPath, loop);
+                        am.PlaySFX(audioPath);
                     }
                     break;
             }
         }
 
-        public void Interrupt(DialogueManager dm)
+        public void Interrupt()
         {
             if (audioType == AudioType.Voice && GlobalSettings.SkipVoice)
             {
-                dm.StopVoice();
+                AudioManager.Instance.StopVoice();
             }
         }
 
-        public void Skip(DialogueManager dm)
+        public void Skip()
         {
+            var am = AudioManager.Instance;
             if (audioType == AudioType.BGM)
             {
                 if (audioPlayType == AudioPlayType.Play)
                 {
-                    dm.PlayBGM(audioPath, loop);
+                    am.PlayBGM(audioPath, 0, loop);
                 }
                 else
                 {
-                    dm.StopBGM();
+                    am.StopBGM();
                 }
             }
         }

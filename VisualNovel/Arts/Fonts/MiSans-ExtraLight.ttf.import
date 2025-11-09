@@ -2,13 +2,13 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://07f88dedph7l"
-path="res://.godot/imported/MiSans-Thin.ttf-1609b50d574c9006f48f022a5457c9ea.fontdata"
+uid="uid://byd20hdixwb17"
+path="res://.godot/imported/MiSans-ExtraLight.ttf-9f11202a249122439e3d56cadceea9af.fontdata"
 
 [deps]
 
-source_file="res://Arts/Fonts/MiSans-Thin.ttf"
-dest_files=["res://.godot/imported/MiSans-Thin.ttf-1609b50d574c9006f48f022a5457c9ea.fontdata"]
+source_file="res://VisualNovel/Arts/Fonts/MiSans-ExtraLight.ttf"
+dest_files=["res://.godot/imported/MiSans-ExtraLight.ttf-9f11202a249122439e3d56cadceea9af.fontdata"]
 
 [params]
 

@@ -2,13 +2,13 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://dhltf2252erdj"
-path="res://.godot/imported/MiSans-Demibold.ttf-d99511917dbf4a8e4415e120bc3966c2.fontdata"
+uid="uid://cb7xp458bopcx"
+path="res://.godot/imported/MiSans-Light.ttf-1c352289507b2e9a63e7678ff736896b.fontdata"
 
 [deps]
 
-source_file="res://Arts/Fonts/MiSans-Demibold.ttf"
-dest_files=["res://.godot/imported/MiSans-Demibold.ttf-d99511917dbf4a8e4415e120bc3966c2.fontdata"]
+source_file="res://VisualNovel/Arts/Fonts/MiSans-Light.ttf"
+dest_files=["res://.godot/imported/MiSans-Light.ttf-1c352289507b2e9a63e7678ff736896b.fontdata"]
 
 [params]
 

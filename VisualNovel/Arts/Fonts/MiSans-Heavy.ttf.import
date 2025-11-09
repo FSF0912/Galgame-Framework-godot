@@ -2,13 +2,13 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://dk6xltpmeyqt6"
-path="res://.godot/imported/MiSans-Bold.ttf-90332b550c4c746bb0b5b094d4e01385.fontdata"
+uid="uid://bgj1xpttgx2sc"
+path="res://.godot/imported/MiSans-Heavy.ttf-82305d11cf0b501ff37072a34f681857.fontdata"
 
 [deps]
 
-source_file="res://Arts/Fonts/MiSans-Bold.ttf"
-dest_files=["res://.godot/imported/MiSans-Bold.ttf-90332b550c4c746bb0b5b094d4e01385.fontdata"]
+source_file="res://VisualNovel/Arts/Fonts/MiSans-Heavy.ttf"
+dest_files=["res://.godot/imported/MiSans-Heavy.ttf-82305d11cf0b501ff37072a34f681857.fontdata"]
 
 [params]
 

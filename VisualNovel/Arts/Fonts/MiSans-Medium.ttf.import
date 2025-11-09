@@ -3,12 +3,12 @@
 importer="font_data_dynamic"
 type="FontFile"
 uid="uid://dn8d425a0isr8"
-path="res://.godot/imported/MiSans-Medium.ttf-f29fb6134b4d22cb6ea5fb3d4bd04029.fontdata"
+path="res://.godot/imported/MiSans-Medium.ttf-1b2683af079557d0d69bad8c4af24e2b.fontdata"
 
 [deps]
 
-source_file="res://Arts/Fonts/MiSans-Medium.ttf"
-dest_files=["res://.godot/imported/MiSans-Medium.ttf-f29fb6134b4d22cb6ea5fb3d4bd04029.fontdata"]
+source_file="res://VisualNovel/Arts/Fonts/MiSans-Medium.ttf"
+dest_files=["res://.godot/imported/MiSans-Medium.ttf-1b2683af079557d0d69bad8c4af24e2b.fontdata"]
 
 [params]
 

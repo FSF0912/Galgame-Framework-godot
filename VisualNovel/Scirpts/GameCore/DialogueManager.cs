@@ -15,20 +15,14 @@ namespace VisualNovel
 		BranchChoice
 	}
 
+	[GlobalClass]
 	public partial class DialogueManager : Control
 	{
 		public static DialogueManager Instance;
 
-		/// <summary>
-		/// Signal emitted after a new dialogue line already starts executing.
-		/// </summary>
+
 		[Signal] public delegate void AfterExecuteStartEventHandler();
-
-		/// <summary>
-		/// Signal emitted before a new dialogue line already starts executing.
-		/// </summary>
 		[Signal] public delegate void BeforeExecuteStartEventHandler();
-
 		[Signal] public delegate void ExecuteCompleteEventHandler();
 
 
@@ -60,14 +54,8 @@ namespace VisualNovel
 		public override void _Ready()
 		{
 			base._Ready();
-			_BGMPlayer = new AudioStreamPlayer { Name = "BGMPlayer" };
-			_VoicePlayer = new AudioStreamPlayer { Name = "VoicePlayer" };
-			_SEPlayer = new AudioStreamPlayer { Name = "SEPlayer" };
-			SceneActiveTextures.Clear();
 
-			AddChild(_BGMPlayer);
-			AddChild(_VoicePlayer);
-			AddChild(_SEPlayer);
+			SceneActiveTextures.Clear();
 
 			SceneActiveTextures.Add(-100, BackGroundTexture);
 			SceneActiveTextures.Add(-200, AvatarTexture);
@@ -75,15 +63,15 @@ namespace VisualNovel
 			BeforeExecuteStart += AutoplayRegistered_BeforeExecuteStart;
 			ExecuteComplete += AutoplayRegistered_ExecuteComplete;
 
-			_currentDialogueLine = TestScenario.Get();
-			_currentDialogueLine.Execute(this);
+			//_currentDialogueLine = TestScenario.Get();
+			//_currentDialogueLine.Execute(this);
 		}
 
 
 		public override void _ExitTree()
 		{
-			base._ExitTree();
 			Instance = null;
+			base._ExitTree();
 		}
 
 		public override void _Input(InputEvent @event)
@@ -110,166 +98,20 @@ namespace VisualNovel
 		}
 
 
-		public VNTextureRect CreateTexture(int id, float duration, TextureParams textureParams = null, Texture2D defaultTex = null, bool immediate = false)
+		public VNTextureRect CreateTextureRect(int id, float duration, TextureParams textureParams = null,
+		string defaultTexPath = null,
+		VNTextureRect.TranslationType translationType = VNTextureRect.TranslationType.CrossFade)
 		{
 			if (SceneActiveTextures.TryGetValue(id, out VNTextureRect value)) return value;
 
-			var textureRef = new VNTextureRect(textureParams)
-			{ Name = $"Texture_{id}" };
+			var texture = new VNTextureRect(textureParams, defaultTexPath, translationType, id)
+			{ Name = $"TextureRect_{id}" };
 
-			TextureContainer.AddChild(textureRef);
-			SceneActiveTextures.Add(id, textureRef);
+			TextureContainer.AddChild(texture);
+			SceneActiveTextures.Add(id, texture);
 
-			if (defaultTex != null)
-				textureRef.SetTextureWithFade(defaultTex, duration:duration, immediate: immediate, ZIndex: id);
-
-			return textureRef;
+			return texture;
 		}
-
-
-		public VNTextureRect CreateTexture(int id, float duration, TextureParams textureParams = null, string defaultTexPath = null, bool immediate = false)
-		{
-			if (SceneActiveTextures.TryGetValue(id, out VNTextureRect value)) return value;
-
-			var textureRef = new VNTextureRect(textureParams ?? TextureParams.DefaultPortraitNormalDistance)
-			{ Name = $"Texture_{id}" };
-
-			TextureContainer.AddChild(textureRef);
-			SceneActiveTextures.Add(id, textureRef);
-
-			if (!string.IsNullOrWhiteSpace(defaultTexPath))
-				textureRef.SetTextureWithFade(defaultTexPath, duration: duration, immediate: immediate, ZIndex: id);
-
-			return textureRef;
-		}
-
-		public CharacterController CreateCharacter(
-			int id,
-			float duration,
-			string chara_name,
-			string init_chara_portrait_name,
-			string init_chara_face_name,
-			string init_chara_effect_name,
-			//TextureParams textureParams = null,
-			bool immediate = false)
-		{
-			if (SceneActiveTextures.TryGetValue(id, out VNTextureRect value) && value is CharacterController existingCharacter)
-				return existingCharacter;
-
-			var chara = new CharacterController(
-				chara_name,
-				init_chara_portrait_name,
-				init_chara_face_name,
-				init_chara_effect_name,
-				TextureParams.DefaultPortraitNormalDistance);
-
-			chara.Name = new(chara_name);
-
-			TextureContainer.AddChild(chara);
-			SceneActiveTextures.Add(id, chara);
-
-			return chara;
-		}
-
-
-		#region Audio Control
-
-		AudioStreamPlayer _BGMPlayer, _VoicePlayer, _SEPlayer;
-		Tween _BGMFadeTween;
-
-		public void PlayBGM(string path, bool loop = true)
-		{
-			var audioStream = VNResloader.LoadAudio(path);
-			if (audioStream == null) return;
-
-			StopAudio(_BGMPlayer);
-			_BGMPlayer.Stream = audioStream;
-			_BGMPlayer.VolumeDb = 0;
-			HandleLooping(audioStream, loop);
-			_BGMPlayer.Play();
-		}
-
-		public void StopBGM(bool smooth = false, float fadeDuration = -1.0f)
-		{
-			if (smooth)
-			{
-				if (_BGMFadeTween != null && IsInstanceValid(_BGMFadeTween))
-				{
-					_BGMFadeTween.Kill();
-					_BGMFadeTween = null;
-				}
-				_BGMFadeTween = CreateTween();
-				_BGMFadeTween.TweenProperty(_BGMPlayer, "volume_db", -80f,
-				fadeDuration > 0 ? fadeDuration : GlobalSettings.AnimationDefaultTime).
-				SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
-				_BGMFadeTween.TweenCallback(Callable.From(() => StopAudio(_BGMPlayer)));
-			}
-			else
-			{
-				StopAudio(_BGMPlayer);
-			}
-		}
-
-		public void PlayVoice(string path, bool loop = false)
-		{
-			var audioStream = GD.Load<AudioStream>(path);
-			if (audioStream == null) return;
-
-			StopAudio(_VoicePlayer);
-			_VoicePlayer.Stream?.Dispose();
-			_VoicePlayer.Stream = audioStream;
-			HandleLooping(audioStream, loop);
-			_VoicePlayer.Play();
-		}
-
-		public void StopVoice()
-		{
-			StopAudio(_VoicePlayer);
-		}
-
-
-		public void PlaySE(string path, bool loop = false)
-		{
-			var audioStream = VNResloader.LoadAudio(path);
-			if (audioStream == null) return;
-
-			StopAudio(_SEPlayer);
-			_SEPlayer.Stream = audioStream;
-			HandleLooping(audioStream, loop);
-			_SEPlayer.Play();
-		}
-
-		public void StopSE()
-		{
-			StopAudio(_SEPlayer);
-		}
-
-		private void HandleLooping(AudioStream stream, bool loop)
-		{
-			if (!loop) return;
-
-			switch (stream)
-			{
-				case AudioStreamOggVorbis oggStream:
-					oggStream.Loop = true;
-					break;
-				case AudioStreamMP3 mp3Stream:
-					mp3Stream.Loop = true;
-					break;
-				case AudioStreamWav wavStream:
-					wavStream.LoopMode = AudioStreamWav.LoopModeEnum.Forward;
-					break;
-			}
-		}
-
-		private void StopAudio(AudioStreamPlayer player)
-		{
-			if (player == null) return;
-
-			player.Stop();
-			player.Stream = null;
-		}
-		#endregion
 
 		#region State Management
 
@@ -311,7 +153,7 @@ namespace VisualNovel
 						{
 							_pendingTasks++;
 							textureRef1.Animator.AnimationComplete -= CompleteTask;
-							textureRef1.Animator.AnimationComplete += CompleteTask; 
+							textureRef1.Animator.AnimationComplete += CompleteTask;
 						}
 						break;
 				}
@@ -322,7 +164,7 @@ namespace VisualNovel
 		private void CompleteTask()
 		{
 			if (_pendingTasks > 0) _pendingTasks--;
-			
+
 			if (_pendingTasks == 0 && gameStatus == GameStatus.PerformingAction)
 			{
 				EmitSignal(SignalName.ExecuteComplete);
@@ -402,7 +244,7 @@ namespace VisualNovel
 
 		private void AutoplayRegistered_BeforeExecuteStart()
 		{
-			IsAutoplayExecutionComplete	 = false;
+			IsAutoplayExecutionComplete = false;
 		}
 
 		private void StartTimerForAutoplay()

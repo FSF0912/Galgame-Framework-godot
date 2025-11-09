@@ -1,10 +1,9 @@
-[gd_scene load_steps=11 format=4 uid="uid://b0dbi2axmu56c"]
+[gd_scene load_steps=10 format=4 uid="uid://b0dbi2axmu56c"]
 
-[ext_resource type="Script" uid="uid://cq4cnx5k3s7rd" path="res://Scirpts/GameCore/DialogueManager.cs" id="1_nxw56"]
-[ext_resource type="Script" uid="uid://clwik8446tbcn" path="res://Scirpts/GameCore/TypeWriter.cs" id="2_5npg8"]
-[ext_resource type="FontFile" uid="uid://bve6tao483hq3" path="res://Arts/Fonts/MiSans-Normal.ttf" id="4_nxw56"]
-[ext_resource type="FontFile" uid="uid://dhltf2252erdj" path="res://Arts/Fonts/MiSans-Demibold.ttf" id="5_0cn3g"]
-[ext_resource type="Script" uid="uid://28dulq8q61pw" path="res://Scirpts/GameCore/CrossFadeTextureRect.cs" id="5_gn3x6"]
+[ext_resource type="Script" uid="uid://cq4cnx5k3s7rd" path="res://VisualNovel/Scirpts/GameCore/DialogueManager.cs" id="1_nxw56"]
+[ext_resource type="Script" uid="uid://clwik8446tbcn" path="res://VisualNovel/Scirpts/GameCore/TypeWriter.cs" id="2_5npg8"]
+[ext_resource type="FontFile" uid="uid://bve6tao483hq3" path="res://VisualNovel/Arts/Fonts/MiSans-Normal.ttf" id="4_nxw56"]
+[ext_resource type="FontFile" uid="uid://dhltf2252erdj" path="res://VisualNovel/Arts/Fonts/MiSans-Demibold.ttf" id="5_0cn3g"]
 
 [sub_resource type="Image" id="Image_0cn3g"]
 data = {
@@ -613,23 +612,23 @@ cache/0/16/0/glyphs/268435460/size = Vector2(5, 14)
 cache/0/16/0/glyphs/268435460/uv_rect = Rect2(75, 84, 5, 14)
 cache/0/16/0/glyphs/268435460/texture_idx = 0
 
-[sub_resource type="FontVariation" id="FontVariation_w70yj"]
+[sub_resource type="FontVariation" id="FontVariation_36ab5"]
 base_font = SubResource("FontFile_gn3x6")
-variation_transform = Transform2D(1, 0.2, 0, 1, 0, 0)
+variation_embolden = 1.2
 
 [sub_resource type="FontVariation" id="FontVariation_so1cc"]
 base_font = SubResource("FontFile_gn3x6")
 variation_embolden = 1.2
 variation_transform = Transform2D(1, 0.2, 0, 1, 0, 0)
 
-[sub_resource type="FontVariation" id="FontVariation_36ab5"]
+[sub_resource type="FontVariation" id="FontVariation_w70yj"]
 base_font = SubResource("FontFile_gn3x6")
-variation_embolden = 1.2
+variation_transform = Transform2D(1, 0.2, 0, 1, 0, 0)
 
 [node name="Node2D" type="Node2D"]
 top_level = true
 
-[node name="DialogueUI" type="Control" parent="." node_paths=PackedStringArray("SpeakerNameLabel", "typeWriter", "BackGroundTexture", "TextureContainer", "BranchContainer")]
+[node name="DialogueUI" type="Control" parent="." node_paths=PackedStringArray("SpeakerNameLabel", "typeWriter", "BackGroundTexture", "TextureContainer")]
 layout_mode = 3
 anchors_preset = 0
 offset_right = 1920.0
@@ -637,18 +636,17 @@ offset_bottom = 1080.0
 size_flags_horizontal = 4
 size_flags_vertical = 4
 script = ExtResource("1_nxw56")
+EnableAutoplay = true
+BranchContainer = null
 SpeakerNameLabel = NodePath("DialogueDisplayArea/SpeakerName")
 typeWriter = NodePath("DialogueDisplayArea/RichTextLabel")
 BackGroundTexture = NodePath("BackGroundTexture")
 TextureContainer = NodePath("TextureContainer")
-BranchContainer = NodePath("")
-EnableAutoplay = true
 
 [node name="BackGroundTexture" type="TextureRect" parent="DialogueUI"]
 layout_mode = 0
 offset_right = 1920.0
 offset_bottom = 1080.0
-script = ExtResource("5_gn3x6")
 
 [node name="TextureContainer" type="Control" parent="DialogueUI"]
 anchors_preset = 0
@@ -681,14 +679,14 @@ offset_right = 1625.0
 offset_bottom = 320.0
 focus_mode = 2
 theme_override_fonts/normal_font = ExtResource("4_nxw56")
-theme_override_fonts/italics_font = SubResource("FontVariation_w70yj")
-theme_override_fonts/bold_italics_font = SubResource("FontVariation_so1cc")
 theme_override_fonts/bold_font = SubResource("FontVariation_36ab5")
+theme_override_fonts/bold_italics_font = SubResource("FontVariation_so1cc")
+theme_override_fonts/italics_font = SubResource("FontVariation_w70yj")
+theme_override_font_sizes/normal_font_size = 40
+theme_override_font_sizes/bold_font_size = 40
 theme_override_font_sizes/bold_italics_font_size = 40
 theme_override_font_sizes/italics_font_size = 40
 theme_override_font_sizes/mono_font_size = 40
-theme_override_font_sizes/normal_font_size = 40
-theme_override_font_sizes/bold_font_size = 40
 bbcode_enabled = true
 text = "text!!!!"
 selection_enabled = true
