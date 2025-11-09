@@ -10,10 +10,10 @@ config_version=5
 
 [application]
 
-config/name="Galgame-Frame-GodotRE"
+config/name="Galgame-Framework-godot"
 run/main_scene="uid://b0dbi2axmu56c"
-config/features=PackedStringArray("4.5", "C#", "Forward Plus")
-config/icon="res://Arts/icon.svg"
+config/features=PackedStringArray("4.5", "Forward Plus")
+config/icon="res://VisualNovel/Arts/icon.svg"
 
 [display]
 
@@ -24,4 +24,4 @@ window/stretch/mode="canvas_items"
 
 [dotnet]
 
-project/assembly_name="Galgame-Frame-GodotRE"
+project/assembly_name="Galgame-Framework-godot"
