@@ -1,5 +1,7 @@
-using System.Collections.Generic;
-using System.Threading.Tasks;
+/*
+参考TextureAnimator打的注释。
+本类较为独立。
+*/
 using Godot;
 
 namespace VisualNovel
@@ -23,7 +25,7 @@ namespace VisualNovel
         /// <summary>
         /// 动画Tween
         /// </summary>
-        private Tween _tween;
+        public Tween animTween { get; private set; }
         /// <summary>
         /// 是否有立即生效的动画
         /// </summary>
@@ -61,9 +63,9 @@ namespace VisualNovel
         {
             duration = duration <= 0 ? GlobalSettings.AnimationDefaultTime : duration;
             EnsureTween();
-            if (!parallel) _tween.SetParallel(false);
-            _tween!.TweenProperty(_target, "position", value, duration).SetTrans(trans).SetEase(ease);
-            if (!parallel) _tween.SetParallel();
+            if (!parallel) animTween.SetParallel(false);
+            animTween!.TweenProperty(_target, "position", value, duration).SetTrans(trans).SetEase(ease);
+            if (!parallel) animTween.SetParallel();
         }
         
         public void AddMoveImmediately(Vector2 value)
@@ -78,10 +80,10 @@ namespace VisualNovel
         {
             duration = duration <= 0 ? GlobalSettings.AnimationDefaultTime : duration;
             EnsureTween();
-            if (!parallel) _tween.SetParallel(false);
-            _tween!.TweenProperty(_target,
+            if (!parallel) animTween.SetParallel(false);
+            animTween!.TweenProperty(_target,
              "rotation_degrees", degrees, duration).SetTrans(trans).SetEase(ease);
-            if (!parallel) _tween.SetParallel();
+            if (!parallel) animTween.SetParallel();
         }
 
         public void AddRotateImmediately(float degrees, bool isLocal = true)
@@ -96,9 +98,9 @@ namespace VisualNovel
         {
             duration = duration <= 0 ? GlobalSettings.AnimationDefaultTime : duration;
             EnsureTween();
-            if (!parallel) _tween.SetParallel(false);
-            _tween!.TweenProperty(_target, "scale", scale, duration).SetTrans(trans).SetEase(ease);
-            if (!parallel) _tween.SetParallel();
+            if (!parallel) animTween.SetParallel(false);
+            animTween!.TweenProperty(_target, "scale", scale, duration).SetTrans(trans).SetEase(ease);
+            if (!parallel) animTween.SetParallel();
         }
 
         public void AddScaleImmediately(Vector2 scale)
@@ -118,8 +120,8 @@ namespace VisualNovel
             _shakeElapsed = 0f;
             _currentShakeIntensity = intensity;
 
-            if (!parallel) _tween.SetParallel(false);
-            _tween!.TweenMethod(Callable.From<float>((t) =>
+            if (!parallel) animTween.SetParallel(false);
+            animTween!.TweenMethod(Callable.From<float>((t) =>
             {
                 _shakeElapsed += (float)GetProcessDeltaTime();
                 float offset = Mathf.Sin(_shakeElapsed * frequency * Mathf.Pi) * _currentShakeIntensity;
@@ -133,7 +135,7 @@ namespace VisualNovel
             }), 0f, 1f, duration).
             SetTrans(trans).
             SetEase(ease);
-            if (!parallel) _tween.SetParallel();
+            if (!parallel) animTween.SetParallel();
         }
 
         #endregion
@@ -146,11 +148,11 @@ namespace VisualNovel
             duration = duration <= 0 ? GlobalSettings.AnimationDefaultTime : duration;
             EnsureTween();
 
-            if (!parallel) _tween!.SetParallel(parallel);
-            _tween!.TweenProperty(_target, "modulate", target, duration)
+            if (!parallel) animTween!.SetParallel(parallel);
+            animTween!.TweenProperty(_target, "modulate", target, duration)
                 .SetTrans(trans).SetEase(ease);
 
-            if (!parallel) _tween.SetParallel();
+            if (!parallel) animTween.SetParallel();
         }
 
         public void AddColorTintImmediately(Color target)
@@ -166,11 +168,11 @@ namespace VisualNovel
             duration = duration <= 0 ? GlobalSettings.AnimationDefaultTime : duration;
             EnsureTween();
 
-            if (!parallel) _tween.SetParallel(parallel);
-            _tween!.TweenProperty(_target, "modulate:a", alpha, duration)
+            if (!parallel) animTween.SetParallel(parallel);
+            animTween!.TweenProperty(_target, "modulate:a", alpha, duration)
                 .SetTrans(trans).SetEase(ease);
 
-            if (!parallel) _tween.SetParallel();
+            if (!parallel) animTween.SetParallel();
         }
 
         public void AddFadeImmediately(float alpha)
@@ -186,18 +188,18 @@ namespace VisualNovel
         /// </summary>
         private void EnsureTween()
         {
-            if (_tween == null || !IsInstanceValid(_tween))
+            if (animTween == null || !IsInstanceValid(animTween))
             {
-                _tween = CreateTween();
-                _tween.SetParallel();
-                _tween!.Finished += OnTweenFinished;
+                animTween = CreateTween();
+                animTween.SetParallel();
+                animTween!.Finished += OnTweenFinished;
             }
         }
 
         private void OnTweenFinished()
         {
             EmitSignal(SignalName.AnimationComplete);
-            _tween = null;
+            animTween = null;
         }
 
         /// <summary>
@@ -205,18 +207,21 @@ namespace VisualNovel
         /// </summary>
         public void CompleteAnimations()
         {
-            if (_tween != null && _tween.IsValid())
+            if (animTween != null && animTween.IsValid())
             {
-                _tween.CustomStep(1000f);
-                _tween.Kill();
+                animTween.CustomStep(1000f);
+                //anim tween在custom step后，直接被杀掉了。不用额外kill
+                //也意味着需要自定义finished信号，不能简单地扔到tween的finished事件里去。
+                //GD.Print(animTween == null);
+                //animTween.Kill();
             }
             EmitSignal(SignalName.AnimationComplete);
-            _tween = null;
+            animTween = null;
         }
 
         public void RunAnimations()
         {
-            if (_tween == null)
+            if (animTween == null)
             {
                 if (_hasImmediate)
                 {
@@ -225,16 +230,16 @@ namespace VisualNovel
                 return;
             }
 
-            _tween.Play();
+            animTween.Play();
         }
 
         public void ResetState()
         {
-            if (_tween != null && _tween.IsValid())
+            if (animTween != null && animTween.IsValid())
             {
-                _tween.Kill();
+                animTween.Kill();
             }
-            _tween = null;
+            animTween = null;
             _hasImmediate = false;
             _shakeElapsed = 0f;
             _currentShakeIntensity = 0f;

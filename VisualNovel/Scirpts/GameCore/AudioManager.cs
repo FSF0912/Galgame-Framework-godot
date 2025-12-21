@@ -8,6 +8,7 @@ namespace VisualNovel
     {
         // 单例实例
         public static AudioManager Instance { get; private set; }
+        [Signal] public delegate void VoiceCompleteEventHandler();
 
         // 音频总线名称
         private const string MASTER_BUS = "Master";
@@ -264,6 +265,7 @@ namespace VisualNovel
             _voicePlayer.Stop();
             _voicePlayer.Stream = null;
             _voicePlayer.GlobalPosition = Vector2.Zero; // 重置位置
+            EmitSignal(SignalName.VoiceComplete);
         }
 
         // 私有：位置映射（不变）

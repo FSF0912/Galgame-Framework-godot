@@ -636,12 +636,11 @@ offset_bottom = 1080.0
 size_flags_horizontal = 4
 size_flags_vertical = 4
 script = ExtResource("1_nxw56")
-EnableAutoplay = true
-BranchContainer = null
 SpeakerNameLabel = NodePath("DialogueDisplayArea/SpeakerName")
 typeWriter = NodePath("DialogueDisplayArea/RichTextLabel")
 BackGroundTexture = NodePath("BackGroundTexture")
 TextureContainer = NodePath("TextureContainer")
+EnableAutoplay = true
 
 [node name="BackGroundTexture" type="TextureRect" parent="DialogueUI"]
 layout_mode = 0
@@ -654,6 +653,7 @@ offset_right = 1920.0
 offset_bottom = 1080.0
 
 [node name="DialogueDisplayArea" type="ColorRect" parent="DialogueUI"]
+z_index = 10
 layout_mode = 0
 offset_top = 730.0
 offset_right = 1920.0
