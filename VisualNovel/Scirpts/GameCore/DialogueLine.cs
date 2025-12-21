@@ -45,23 +45,6 @@ namespace VisualNovel
         public void Interrupt();
     }
 
-    /*public interface IAnimative
-    {
-        public TextureAnimator animator { get; set; }
-        public void AddMove(Vector2 targetPosition, float duration, bool isRelative = false, Tween.TransitionType transitionType = Tween.TransitionType.Linear, Tween.EaseType easeType = Tween.EaseType.InOut);
-        public void AddMoveImmediately(Vector2 targetPosition, bool isRelative = false);
-        public void AddRotate(float rotationDegrees, float duration, bool isLocal = true, Tween.TransitionType transitionType = Tween.TransitionType.Linear, Tween.EaseType easeType = Tween.EaseType.InOut);
-        public void AddRotateImmediately(float rotationDegrees, bool isLocal = true);
-        public void AddScale(Vector2 targetScale, float duration, Tween.TransitionType transitionType = Tween.TransitionType.Linear, Tween.EaseType easeType = Tween.EaseType.InOut);
-        public void AddScaleImmediately(Vector2 targetScale);
-        public void AddShake(float intensity, float duration, float frequency = 10, Tween.TransitionType transitionType = Tween.TransitionType.Linear, Tween.EaseType easeType = Tween.EaseType.InOut);
-        public void AddColorTint(Color targetColor, float duration, Tween.TransitionType transitionType = Tween.TransitionType.Linear, Tween.EaseType easeType = Tween.EaseType.InOut);
-        public void AddColorTintImmediately(Color targetColor);
-        public void AddFade(float targetAlpha, float duration, Tween.TransitionType transitionType = Tween.TransitionType.Linear, Tween.EaseType easeType = Tween.EaseType.InOut);
-        public void AddFadeImmediately(float targetAlpha);
-        public void CompleteAnimations();
-    }*/
-
     public struct SpeakerLine : IDialogueCommand
     {
         public string SpeakerName;
@@ -313,7 +296,7 @@ namespace VisualNovel
         {
             if (DialogueManager.Instance.SceneActiveTextures.TryGetValue(ID, out var targetRef))
             {
-                targetRef.Animator.CompleteAnimations();
+                targetRef.Animator?.CompleteAnimations();
             }
         }
 

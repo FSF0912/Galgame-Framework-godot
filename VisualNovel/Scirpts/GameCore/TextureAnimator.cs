@@ -210,7 +210,10 @@ namespace VisualNovel
             if (animTween != null && animTween.IsValid())
             {
                 animTween.CustomStep(1000f);
-                animTween.Kill();
+                //anim tween在custom step后，直接被杀掉了。不用额外kill
+                //也意味着需要自定义finished信号，不能简单地扔到tween的finished事件里去。
+                //GD.Print(animTween == null);
+                //animTween.Kill();
             }
             EmitSignal(SignalName.AnimationComplete);
             animTween = null;

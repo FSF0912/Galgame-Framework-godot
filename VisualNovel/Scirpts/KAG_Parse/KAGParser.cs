@@ -1,5 +1,6 @@
 // 文件: KagParser.cs
 // 版本: 重构优化版 v2.0
+/*
 using Godot;
 using System;
 using System.Collections.Generic;
@@ -504,4 +505,11 @@ namespace VisualNovel
         }
         #endregion
     }
+}*/using Godot;
+using System;
+using System.Collections.Generic;
+
+namespace VisualNovel
+{
+    // 此处可添加其他KAG解析相关的类或方法
 }

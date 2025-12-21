@@ -5,16 +5,13 @@ namespace VisualNovel
 {
     /// <summary>
     /// 包含一个静态方法，用于生成测试剧情的对话指令序列。
-    /// 【剧情扩展版 - 报错修正】
+    /// 【剧情重塑版 - 温柔腹黑的冬日博士与芳乃】
     /// </summary>
     public static class TestScenario
     {
-        /// <summary>
-        /// 生成并返回一个用于测试剧情的 DialogueLine 对象列表。
-        /// </summary>
-        /// <returns>一个可由 DialogueManager 执行的 DialogueLine 指令列表。</returns>
         static int counter = 0;
         static List<DialogueLine> dia = GetTestDialogue();
+
         public static DialogueLine Get()
         {
             if (counter >= dia.Count - 1) return dia[^1];
@@ -22,140 +19,127 @@ namespace VisualNovel
             var t = dia[counter];
             counter++;
             return t;
-
         }
+
         public static List<DialogueLine> GetTestDialogue()
         {
             var dialogue = new List<DialogueLine>
             {
-                // ================== PART 1: 开场 ==================
+                // ================== PART 1: 实验室的午后 ==================
 
-                // 第1行: 场景淡入，显示背景图 'nine.png'，同时播放背景音乐 'bgmusic_1.mp3'。
                 new DialogueLine(new List<IDialogueCommand>
                 {
-                    new SpeakerLine("", "欢迎来到测试场景！"),
-                    new TextureLine(-100, TextureLine.TextureMode.Switch, "res://test/nine.png"),
-                    new Audioline(Audioline.AudioType.BGM, audioPlayType:Audioline.AudioPlayType.Play, "res://test/bgmusic_1.mp3", loop: true)
+                    new SpeakerLine("", "午后的实验室，阳光有些慵懒地洒在精密仪器上。"),
+                    new Audioline(Audioline.AudioType.BGM, Audioline.AudioPlayType.Play, path:"res://test/bgmusic_1.mp3", loop: true)
                 }),
 
-                // 第2行: 角色 "Yoshino" 登场并说话。
+                // 冬日博士登场
                 new DialogueLine(new List<IDialogueCommand>
                 {
-                    new TextureLine(1, TextureLine.TextureMode.Switch, "res://test/yoshino.png"),
-                    new TextureAnimationLine(1, TextureAnimationLine.AnimationType.Shake, duration: 1f, isRelative: false),
-                    new TextureAnimationLine(1, TextureAnimationLine.AnimationType.Move, 0.5f, new Vector2(150, 150), isRelative: false),
-                    new SpeakerLine("Yoshino", "欢迎来到这个焕然一新的测试场景！")
+                    new TextureLine(2, TextureLine.TextureMode.Switch, path:"res://test/drwind.jpg"),
+                    // new TextureAnimationLine(2, TextureAnimationLine.AnimationType.Move, 0.5f, targetVector:new Vector2(850, 150), isRelative: false),
+                    new SpeakerLine("冬日博士", "芳乃，工作辛苦了。在那张实验台旁，我给你留了些好东西哦。")
                 }),
                 
-                // 第3行: 第二个角色 "Dr. Wind" 登场并说话。
+                // 芳乃登场
                 new DialogueLine(new List<IDialogueCommand>
                 {
-                    new TextureLine(2, TextureLine.TextureMode.Switch, "res://test/drwind.jpg"),
-                    new TextureAnimationLine(2, TextureAnimationLine.AnimationType.Move, 0.5f, new Vector2(850, 150), isRelative: false),
-                    new SpeakerLine("Dr. Wind", "嗯，这里的资源都已经换上了我们自己的测试文件。")
+                    new TextureLine(1, TextureLine.TextureMode.Switch, path:"res://test/yoshino.png"),
+                    // new TextureAnimationLine(1, TextureAnimationLine.AnimationType.Move, 0.5f, targetVector:new Vector2(150, 150), isRelative: false),
+                    // new TextureAnimationLine(1, TextureAnimationLine.AnimationType.Shake, duration: 0.5f, isRelative: false),
+                    new SpeakerLine("芳乃", "欸？博士竟然会特意犒劳我……我有种不祥的预感。")
                 }),
 
-                // 第4行: Yoshino 的立绘晃动，并说出下一句台词。
                 new DialogueLine(new List<IDialogueCommand>
                 {
-                    // [修正] 为 Shake 动画的 targetVector 参数传入 null
-                    new TextureAnimationLine(1, TextureAnimationLine.AnimationType.Shake, 0.4f, targetVector: null, intensity: 10f),
-                    new SpeakerLine("Yoshino", "是的！动画效果看起来非常棒！")
+                    // new TextureAnimationLine(2, TextureAnimationLine.AnimationType.Shake, 0.4f, targetVector: null, intensity: 5f),
+                    new SpeakerLine("冬日博士", "呵呵，真失礼呢。我只是觉得，适当的糖分有助于大脑进化。")
                 }),
 
-                // ================== PART 2: 神秘的牛奶 ==================
+                // ================== PART 2: 神秘的“礼物” ==================
                 
-                // 第5行: 神秘物品 'milk.jpg' 登场。
+                // 牛奶出现
                 new DialogueLine(new List<IDialogueCommand>
                 {
-                    new TextureLine(3, TextureLine.TextureMode.Switch, "res://test/milk.jpg"),
-                    new TextureAnimationLine(3, TextureAnimationLine.AnimationType.Scale, 0.3f, new Vector2(1.1f, 1.1f), easeType: Tween.EaseType.Out),
-                    new TextureAnimationLine(3, TextureAnimationLine.AnimationType.Move, 0f, new Vector2(600, 300), isRelative: false),
-                    new SpeakerLine("Dr. Wind", "说起来，这是什么东西？")
+                    new TextureLine(3, TextureLine.TextureMode.Switch, path:"res://test/milk.jpg"),
+                    // new TextureAnimationLine(3, TextureAnimationLine.AnimationType.Move, 0f, targetVector:new Vector2(600, 300), isRelative: false),
+                    // new TextureAnimationLine(3, TextureAnimationLine.AnimationType.Scale, 0.3f, targetVector:new Vector2(1.1f, 1.1f), easeType: Tween.EaseType.Out),
+                    new SpeakerLine("芳乃", "哇，是包装很可爱的牛奶！博士万岁！")
                 }),
 
-                // 第6行: 牛奶恢复正常大小，Yoshino 做出解释。
                 new DialogueLine(new List<IDialogueCommand>
                 {
-                    new TextureAnimationLine(3, TextureAnimationLine.AnimationType.Scale, 0.3f, new Vector2(1.0f, 1.0f)),
-                    new SpeakerLine("Yoshino", "是牛奶哦！看上去能补充不少体力！")
+                    // new TextureAnimationLine(3, TextureAnimationLine.AnimationType.Scale, 0.3f, targetVector:new Vector2(1.0f, 1.0f)),
+                    new SpeakerLine("芳乃", "咕嘟咕嘟……哈，感觉浑身都充满了不可思议的力量！")
                 }),
 
-                // 第7行: 博士靠近牛奶，表情变得警惕。
+                // 博士露出深意的笑容（切换表情）
                 new DialogueLine(new List<IDialogueCommand>
                 {
-                    new TextureLine(2, TextureLine.TextureMode.Switch, "res://test/drwindextra.jpg"),
-                    new TextureAnimationLine(2, TextureAnimationLine.AnimationType.Move, 0.8f, new Vector2(700, 150), isRelative: false),
-                    new SpeakerLine("Dr. Wind", "等等...这个东西感觉有点不太对劲...")
+                    new TextureLine(2, TextureLine.TextureMode.Switch, path:"res://test/drwindextra.jpg"),
+                    // new TextureAnimationLine(2, TextureAnimationLine.AnimationType.Move, 0.8f, targetVector:new Vector2(700, 150), isRelative: false),
+                    new SpeakerLine("冬日博士", "哎呀……芳乃，那是刚才从异世界缝隙里提取的『观测液体』哦。")
                 }),
                 
-                // ================== PART 3: 突变 ==================
+                // ================== PART 3: 观测者的异变 ==================
 
-                // 第8行: 场景突变，背景变红，音乐切换为紧张的 'manbo.mp3'。
+                // 环境变色，音乐变紧张
                 new DialogueLine(new List<IDialogueCommand>
                 {
-                    // [修正] 为 ColorTint 动画的 targetVector 参数传入 null
-                    new TextureAnimationLine(-100, TextureAnimationLine.AnimationType.ColorTint, 0.5f, targetVector: null, targetColor: new Color(1, 0.6f, 0.6f)),
-                    new Audioline(Audioline.AudioType.SE, Audioline.AudioPlayType.Play, "res://test/manbo.mp3", loop: true),
-                    // [修正] 为 ColorTint 动画的 targetVector 参数传入 null
-                    new TextureAnimationLine(3, TextureAnimationLine.AnimationType.ColorTint, 0.5f, targetVector: null, targetColor: new Color(1.5f, 1.5f, 1.5f)),
-                    new SpeakerLine("Yoshino", "呀！发、发生了什么事？！")
+                    // new TextureAnimationLine(-100, TextureAnimationLine.AnimationType.ColorTint, 0.5f, targetVector: null, targetColor: new Color(1, 0.6f, 0.6f)),
+                    new Audioline(Audioline.AudioType.SFX, Audioline.AudioPlayType.Play, path:"res://test/manbo.mp3", loop: true),
+                    // new TextureAnimationLine(3, TextureAnimationLine.AnimationType.ColorTint, 0.5f, targetVector: null, targetColor: new Color(1.5f, 1.5f, 1.5f)),
+                    new SpeakerLine("芳乃", "诶？！博、博士，天花板在跳舞，世界好像在融化！")
                 }),
 
-                // 第9行: Yoshino 害怕地晃动。
                 new DialogueLine(new List<IDialogueCommand>
                 {
-                    // [修正] 为 Shake 动画的 targetVector 参数传入 null
-                    new TextureAnimationLine(1, TextureAnimationLine.AnimationType.Shake, 0.8f, targetVector: null, intensity: 15f, frequency: 20f),
-                    new SpeakerLine("Dr. Wind", "别慌，看来是这个牛奶搞的鬼！")
+                    // new TextureAnimationLine(1, TextureAnimationLine.AnimationType.Shake, 0.8f, targetVector: null, intensity: 15f, frequency: 20f),
+                    new SpeakerLine("冬日博士", "看来身体的排斥反应比预想中更有趣呢。别担心，这只是『重塑』的过程。")
                 }),
 
-                // ================== PART 4: 解决与尾声 ==================
+                // ================== PART 4: 降临新世界 ==================
 
-                // 第10行: 博士解决问题，牛奶消失，场景恢复。
+                // 博士解决危机（或引导进化）
                 new DialogueLine(new List<IDialogueCommand>
                 {
-                    new TextureLine(2, TextureLine.TextureMode.Switch, "res://test/drwind.jpg"),
-                    new Audioline(Audioline.AudioType.SE, Audioline.AudioPlayType.Play, "res://test/laugh.wav"),
-                    // [修正] 为 Fade 动画的 targetVector 参数传入 null
-                    new TextureAnimationLine(3, TextureAnimationLine.AnimationType.Fade, 0.5f, targetVector: null, alpha: 0f),
-                    new SpeakerLine("Dr. Wind", "看我的！这样就解决了。")
+                    new TextureLine(2, TextureLine.TextureMode.Switch, path:"res://test/drwind.jpg"),
+                    new Audioline(Audioline.AudioType.SFX, Audioline.AudioPlayType.Play, path:"res://test/laugh.wav"),
+                    // new TextureAnimationLine(3, TextureAnimationLine.AnimationType.Fade, 0.5f, targetVector: null, alpha: 0f),
+                    new SpeakerLine("冬日博士", "既然这样，就让我们去那个世界看看吧。")
                 }),
 
-                // 第11行: 场景和音乐恢复正常。
+                // 场景切换到 9nine 背景
                 new DialogueLine(new List<IDialogueCommand>
                 {
-                    // [修正] 为 ColorTint 动画的 targetVector 参数传入 null
-                    new TextureAnimationLine(-100, TextureAnimationLine.AnimationType.ColorTint, 1.0f, targetVector: null, targetColor: new Color(1, 1, 1)),
-                    new Audioline(Audioline.AudioType.BGM, Audioline.AudioPlayType.Play, "res://test/bgmusic_1.mp3", loop: true),
-                    new TextureAnimationLine(2, TextureAnimationLine.AnimationType.Move, 0.8f, new Vector2(850, 150), isRelative: false),
-                    new SpeakerLine("Yoshino", "哇...你好厉害，博士！")
+                    new TextureLine(-100, TextureLine.TextureMode.Switch, path:"res://test/nine.png"),
+                    // new TextureAnimationLine(-100, TextureAnimationLine.AnimationType.ColorTint, 1.0f, targetVector: null, targetColor: new Color(1, 1, 1)),
+                    new Audioline(Audioline.AudioType.BGM, Audioline.AudioPlayType.Play, path:"res://test/bgmusic_1.mp3", loop: true),
+                    // new TextureAnimationLine(2, TextureAnimationLine.AnimationType.Move, 0.8f, targetVector:new Vector2(850, 150), isRelative: false),
+                    new SpeakerLine("芳乃", "这里是……学校的街道？刚才的实验室竟然消失了……")
                 }),
 
-                // 第12行: 所有角色淡出。
+                // 两人淡出，留下余韵
                 new DialogueLine(new List<IDialogueCommand>
                 {
-                    // [修正] 为 Fade 动画的 targetVector 参数传入 null
-                    new TextureAnimationLine(1, TextureAnimationLine.AnimationType.Fade, 1.0f, targetVector: null, alpha: 0f),
-                    // [修正] 为 Fade 动画的 targetVector 参数传入 null
-                    new TextureAnimationLine(2, TextureAnimationLine.AnimationType.Fade, 1.0f, targetVector: null, alpha: 0f),
-                    new SpeakerLine("Dr. Wind", "小事一桩。好了，我们的功能测试也该结束了。")
+                    // new TextureAnimationLine(1, TextureAnimationLine.AnimationType.Fade, 1.0f, targetVector: null, alpha: 0f),
+                    // new TextureAnimationLine(2, TextureAnimationLine.AnimationType.Fade, 1.0f, targetVector: null, alpha: 0f),
+                    new SpeakerLine("冬日博士", "欢迎来到属于我们的‘观测剧场’。以后也请多多指教了，芳乃。")
                 }),
                 
-                // 第13行: 最后清理工作。
+                // 清理所有资源
                 new DialogueLine(new List<IDialogueCommand>
                 {
                     new TextureLine(-100, TextureLine.TextureMode.Clear),
                     new TextureLine(1, TextureLine.TextureMode.Delete),
                     new TextureLine(2, TextureLine.TextureMode.Delete),
                     new TextureLine(3, TextureLine.TextureMode.Delete),
-                    new Audioline(Audioline.AudioType.BGM, Audioline.AudioPlayType.Stop, null, smoothStop: true, fadeDuration: 1.5f) { audioPlayType = Audioline.AudioPlayType.Stop }
+                    new Audioline(Audioline.AudioType.BGM, Audioline.AudioPlayType.Stop, null, fadeDuration: 1.5f) { audioPlayType = Audioline.AudioPlayType.Stop }
                 }),
                 
-                // 第14行: 显示结束语。
                 new DialogueLine(new List<IDialogueCommand>
                 {
-                    new SpeakerLine("", "扩展测试剧本圆满结束。")
+                    new SpeakerLine("", "—— [测试剧本：降临篇] 完 ——")
                 })
             };
 

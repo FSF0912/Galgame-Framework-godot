@@ -42,6 +42,9 @@ namespace VisualNovel
 		DialogueLine _currentDialogueLine;
 		public readonly Dictionary<int, VNTextureRect> SceneActiveTextures = [];
 
+		//简并变量
+		private AudioManager _am;
+
 		public override void _EnterTree()
 		{
 			base._EnterTree();
@@ -63,8 +66,24 @@ namespace VisualNovel
 			BeforeExecuteStart += AutoplayRegistered_BeforeExecuteStart;
 			ExecuteComplete += AutoplayRegistered_ExecuteComplete;
 
-			//_currentDialogueLine = TestScenario.Get();
-			//_currentDialogueLine.Execute(this);
+			_am = new AudioManager();
+			AddChild(_am);
+			
+			_autoplayTimer = new Timer
+			{
+				OneShot = true,
+				Name = "AutoplayTimer"
+			};
+			_autoplayTimer.Timeout += () =>
+			{
+				if (gameStatus == GameStatus.WaitingForInput)
+					NextDialogue();
+			};
+			AddChild(_autoplayTimer);
+
+			gameStatus = GameStatus.WaitingForInput;
+			_currentDialogueLine = TestScenario.Get();
+			NextDialogue();
 		}
 
 
@@ -134,8 +153,8 @@ namespace VisualNovel
 						if (audioline.audioType == Audioline.AudioType.Voice)
 						{
 							_pendingTasks++;
-							_VoicePlayer.Finished -= CompleteTask;
-							_VoicePlayer.Finished += CompleteTask;
+							_am.VoiceComplete -= CompleteTask;
+							_am.VoiceComplete += CompleteTask;
 						}
 						break;
 
@@ -143,8 +162,8 @@ namespace VisualNovel
 						if (SceneActiveTextures.TryGetValue(textureLine.ID, out var textureRef))
 						{
 							_pendingTasks++;
-							textureRef.FadeComplete -= CompleteTask;
-							textureRef.FadeComplete += CompleteTask;
+							textureRef.AnimationComplete -= CompleteTask;
+							textureRef.AnimationComplete += CompleteTask;
 						}
 						break;
 
@@ -188,10 +207,8 @@ namespace VisualNovel
 		private void InterruptCurrentDialogue()
 		{
 			_pendingTasks = 0;
-			gameStatus = GameStatus.WaitingForInput;
-			_currentDialogueLine?.Interrupt(this);
-			//总是发射完成信号
-			EmitSignal(SignalName.ExecuteComplete);
+			_currentDialogueLine?.Interrupt();
+			CompleteTask();
 		}
 
 		public void NextDialogue()
@@ -205,7 +222,7 @@ namespace VisualNovel
 			_currentDialogueLine = TestScenario.Get();
 			//
 			gameStatus = GameStatus.PerformingAction;
-			_currentDialogueLine.Execute(this);
+			_currentDialogueLine.Execute();
 			AddPendingTask();
 
 			EmitSignal(SignalName.AfterExecuteStart);
@@ -217,63 +234,25 @@ namespace VisualNovel
 		[Export] public bool EnableAutoplay = false;
 		[Export(PropertyHint.Range, "0.5,5")] public float AutoplayDelay = 2.0f;
 
-		bool _autoplay_ExecutionComplete = false;
-		/// <summary>
-		/// 表示是否所有行为已经播放完成。
-		/// </summary>
-		bool IsAutoplayExecutionComplete
-		{
-			get => _autoplay_ExecutionComplete;
-			set
-			{
-				_autoplay_ExecutionComplete = value;
-				if (EnableAutoplay && value)
-				{
-					StartTimerForAutoplay();
-				}
-			}
-		}
-
 		Timer _autoplayTimer;
 
 		#region  Autoplay/Register Methods
 		private void AutoplayRegistered_ExecuteComplete()
 		{
-			IsAutoplayExecutionComplete = true;
+			if (EnableAutoplay)
+			{
+				StartTimerForAutoplay();
+			}
 		}
 
 		private void AutoplayRegistered_BeforeExecuteStart()
 		{
-			IsAutoplayExecutionComplete = false;
+			_autoplayTimer.Stop();
 		}
 
 		private void StartTimerForAutoplay()
 		{
-			/*
-			//1
-			GetTree().CreateTimer(AutoplayDelay).Timeout += () =>
-			{
-				if (gameStatus == GameStatus.WaitingForInput)
-				{
-					NextDialogue();
-				}
-			};
-			*/
-
-			_autoplayTimer?.QueueFree();
-			_autoplayTimer = null;
-			_autoplayTimer = new Timer
-			{
-				WaitTime = AutoplayDelay,
-				OneShot = true,
-				Name = "AutoplayTimer"
-			};
-			_autoplayTimer.Timeout += () =>
-			{
-				if (gameStatus == GameStatus.WaitingForInput)
-					NextDialogue();
-			};
-			AddChild(_autoplayTimer);
+			_autoplayTimer.WaitTime = AutoplayDelay;
 			_autoplayTimer.Start();
 		}
 
