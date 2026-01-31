@@ -9,13 +9,16 @@ namespace VisualNovel
     /// <summary>
     /// 动画控制器类，作为CrossFadeTextureRect的子节点
     /// </summary>
-    public partial class TextureAnimator : Node
+    [GlobalClass]
+    public partial class TextureAnimator : Node, ISignalNotifier
     {
         /// <summary>
         /// 动画完成信号
         /// </summary>
         /// <param name="count"></param>
         [Signal] public delegate void AnimationCompleteEventHandler();
+
+        public StringName CompletionSignal => SignalName.AnimationComplete;
 
         /// <summary>
         /// 目标TextureRect

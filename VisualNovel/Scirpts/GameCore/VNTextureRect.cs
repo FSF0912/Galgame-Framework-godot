@@ -1,417 +1,10 @@
-/*
-比较复杂。
-
-
-using System;
-using System.Threading.Tasks;
-using System.Threading;
-using Godot;
-using System.Collections.Generic;
-
-namespace VisualNovel
-{
-    /// <summary>
-    /// Texture参数类，用于设置CrossFadeTextureRect的初始参数
-    /// </summary>
-    public class TextureParams
-    {
-        public Vector2 position = Vector2.Zero;
-        public float rotation_degrees = 0f;
-        public Vector2 size = Vector2.One;
-        public TextureRect.ExpandModeEnum expandMode = TextureRect.ExpandModeEnum.IgnoreSize;
-        public TextureRect.StretchModeEnum stretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
-        public Control.LayoutPreset layoutPreset = Control.LayoutPreset.TopLeft;
-
-        public TextureParams(Vector2 position, float rotation_degrees, Vector2 size,
-            TextureRect.ExpandModeEnum expandMode, TextureRect.StretchModeEnum stretchMode,
-            Control.LayoutPreset layoutPreset = Control.LayoutPreset.TopLeft)
-        {
-            this.position = position;
-            this.rotation_degrees = rotation_degrees;
-            this.size = size;
-            this.expandMode = expandMode;
-            this.stretchMode = stretchMode;
-            this.layoutPreset = layoutPreset;
-        }
-
-        /// <summary>
-        /// 默认立绘参数
-        /// position x阈值：约0-640 y阈值：约50-1000
-        /// </summary>
-        public static TextureParams DefaultPortraitNormalDistance = new(
-            position: new(0, 150),
-            rotation_degrees: 0f,
-            size: new Vector2(1300f, 2000f),
-            expandMode: TextureRect.ExpandModeEnum.IgnoreSize,
-            stretchMode: TextureRect.StretchModeEnum.KeepAspectCentered,
-            layoutPreset: Control.LayoutPreset.TopLeft
-        );
-
-        /// <summary>
-        /// 默认全屏背景图参数
-        /// </summary>
-        public static TextureParams DefaultTexture = new(
-            position: new(0, 300),
-            rotation_degrees: 0f,
-            size: new Vector2(1920f, 1080f),
-            expandMode: TextureRect.ExpandModeEnum.KeepSize,
-            stretchMode: TextureRect.StretchModeEnum.KeepAspectCentered,
-            layoutPreset: Control.LayoutPreset.TopLeft
-        );
-    }
-
-    public partial class VNTextureRect : TextureRect
-    {
-        public enum TranslationType
-        {
-            Immediate,
-            CrossFade,
-            FadeOutIn
-        };
-
-        private const string BLUR_SHADER_PATH = "res://VisualNovel/Shaders/blur.gdshader";
-        private readonly SemaphoreSlim _semaphore = new(1, 1);
-        
-        private CancellationTokenSource _cts;
-        private TaskCompletionSource<bool> _tcsTween;
-        private TaskCompletionSource<bool> _tcsAnimator;
-
-        [Signal] public delegate void AnimationCompleteEventHandler();
-
-        private Material _blurMaterial;
-        public TextureParams TextureParams { get; private set; }
-        private TextureRect _fadingRect;
-        private Tween _tween;
-        private TranslationType _currentTranslationType = TranslationType.Immediate;
-        private Texture2D _currentTransitionTex;
-
-        public bool IsAnimatorEnabled { get; private set; } = true;
-        public TextureAnimator Animator { get; private set; }
-
-        string init_TexturePath = "";
-        TranslationType init_TranslationType = TranslationType.Immediate;
-        int init_ZIndex = 1;
-
-        public VNTextureRect(TextureParams initParams, string initTexturePath = "", TranslationType initTranslationType = TranslationType.Immediate, int initZIndex = 1)
-        {
-            IsAnimatorEnabled = true;
-            initParams ??= TextureParams.DefaultTexture;
-            TextureParams = initParams;
-            SetAnchorsAndOffsetsPreset(initParams.layoutPreset, LayoutPresetMode.KeepSize);
-            Position = initParams.position;
-            RotationDegrees = initParams.rotation_degrees;
-            Size = initParams.size;
-            ExpandMode = initParams.expandMode;
-            StretchMode = initParams.stretchMode;
-            this.init_TexturePath = initTexturePath;
-            this.init_TranslationType = initTranslationType;
-            this.init_ZIndex = initZIndex;
-        }
-
-        public VNTextureRect(TextureParams initParams, string initTexturePath = "", int initZIndex = 1)
-        {
-            IsAnimatorEnabled = false;
-            initParams ??= TextureParams.DefaultTexture;
-            TextureParams = initParams;
-            SetAnchorsAndOffsetsPreset(initParams.layoutPreset, LayoutPresetMode.KeepSize);
-            Position = initParams.position;
-            RotationDegrees = initParams.rotation_degrees;
-            Size = initParams.size;
-            ExpandMode = initParams.expandMode;
-            StretchMode = initParams.stretchMode;
-            this.init_TexturePath = initTexturePath;
-            this.init_ZIndex = initZIndex;
-        }
-
-        public override void _Ready()
-        {
-            base._Ready();
-            CheckCrossFadeTex();
-
-            // 加载 Shader
-            var blurShader = GD.Load<Shader>(BLUR_SHADER_PATH);
-            if (blurShader != null)
-            {
-                _blurMaterial = new ShaderMaterial() { Shader = blurShader };
-            }
-
-            if (IsAnimatorEnabled)
-            {
-                Animator = new TextureAnimator(this);
-                AddChild(Animator);
-            }
-
-            SetTexture(init_TexturePath, init_TranslationType, GlobalSettings.AnimationDefaultTime, init_ZIndex);
-
-            DialogueManager.Instance.AfterExecuteStart += StartAwait;
-            DialogueManager.Instance.ExecuteComplete += StopAwait;
-            Animator.AnimationComplete += OnAnimatorFinished;
-        }
-
-        public override void _ExitTree()
-        {
-            CancelCurrentTask(); 
-            DialogueManager.Instance.AfterExecuteStart -= StartAwait;
-            DialogueManager.Instance.ExecuteComplete -= StopAwait;
-            Animator.AnimationComplete -= OnAnimatorFinished;
-            base._ExitTree();
-        }
-
-        public virtual void SetTexture(string path, TranslationType setType = TranslationType.Immediate, float duration = 0.5f, int zIndex = 1)
-        {
-            _currentTranslationType = setType;
-            ClearTween();
-            
-            var newTex = VNResloader.LoadTexture2D(path);
-            this.ZIndex = zIndex;
-
-            if (newTex == null) return;
-
-            _currentTransitionTex = newTex;
-
-            switch (setType)
-            {
-                case TranslationType.Immediate:
-                    Texture = newTex;
-                    SetCrossFadeTexActive(false);
-                    break;
-
-                case TranslationType.CrossFade:
-                    _fadingRect.Modulate = Colors.Transparent;
-                    Modulate = Colors.White;
-                    SetCrossFadeTexActive(true);
-                    _fadingRect.Texture = newTex;
-
-                    _tween = CreateTween();
-                    _tween.SetParallel();
-                    _tween.TweenProperty(_fadingRect, "modulate:a", 1, duration);
-                    _tween.TweenProperty(this, "modulate:a", 0, duration);
-                    _tween.SetTrans(Tween.TransitionType.Sine);
-                    _tween.SetEase(Tween.EaseType.InOut);
-                    _tween.Finished += OnTweenFinished;
-                    break;
-
-                case TranslationType.FadeOutIn:
-                    _fadingRect.Modulate = Colors.Transparent;
-                    Modulate = Colors.White;
-                    SetCrossFadeTexActive(true);
-                    _fadingRect.Texture = newTex;
-
-                    _tween = CreateTween();
-                    _tween.SetParallel(false);
-                    _tween.TweenProperty(this, "modulate:a", 0, duration / 2);
-                    _tween.TweenProperty(_fadingRect, "modulate:a", 1, duration / 2);
-                    _tween.SetTrans(Tween.TransitionType.Sine);
-                    _tween.SetEase(Tween.EaseType.InOut);
-                    _tween.Finished += OnTweenFinished;
-                    break;
-            }
-        }
-
-        public virtual void ClearTexture(float duration = -1, bool immediate = false, bool deleteAfterFade = false)
-        {
-             ClearTween();
-             if (immediate)
-             {
-                Texture = null;
-                SetCrossFadeTexActive(false);
-                _fadingRect.Modulate = Colors.Transparent;
-                if (deleteAfterFade) QueueFree();
-             }
-             else
-             {
-                duration = duration <= 0 ? GlobalSettings.AnimationDefaultTime : duration;
-                _tween = CreateTween();
-                _tween.TweenProperty(this, "modulate:a", 0, duration)
-                .SetTrans(Tween.TransitionType.Sine)
-                .SetEase(Tween.EaseType.InOut);
-                _tween.Finished += OnTweenFinished;
-                SetCrossFadeTexActive(false);
-                if (deleteAfterFade)  _tween.Finished += QueueFree;
-             }
-        }
-
-        public virtual void InterruptTranslation()
-        {
-            if (_currentTranslationType == TranslationType.Immediate) return;
-            ClearTween(); 
-            
-            Texture = _currentTransitionTex;
-            SetCrossFadeTexActive(false);
-            _fadingRect.Modulate = Colors.Transparent;
-            Modulate = Colors.White;
-
-            _tcsTween?.TrySetResult(true);
-            _tcsTween = null;
-        }
-
-        private void SetCrossFadeTexActive(bool active)
-        {
-            _fadingRect.Visible = active;
-            _fadingRect.ProcessMode = active ? ProcessModeEnum.Always : ProcessModeEnum.Disabled;
-        }
-
-        private void ClearTween()
-        {
-            if (_tween != null && IsInstanceValid(_tween))
-            {
-                _tween.Kill(); // kill不会触发finished信号
-                _tween = null;
-            }
-            // 手动完成tcs，防止await寄掉
-            _tcsTween?.TrySetResult(true);
-            _tcsTween = null;
-        }
-
-        private void OnTweenFinished()
-        {
-            if (_currentTranslationType == TranslationType.CrossFade || _currentTranslationType == TranslationType.FadeOutIn)
-            {
-                 Texture = _currentTransitionTex;
-                 SetCrossFadeTexActive(false);
-                 _fadingRect.Modulate = Colors.Transparent;
-                 Modulate = Colors.White;
-            }
-            
-            _tcsTween?.TrySetResult(true);
-            _tcsTween = null;
-        }
-        
-
-        private void OnAnimatorFinished()
-        {
-            _tcsAnimator?.TrySetResult(true);
-            _tcsAnimator = null;
-        }
-
-        # region Signal Emitting Async
-        private void StartAwait()
-        {
-            CancelCurrentTask();
-
-            _cts = new CancellationTokenSource();
-            _ = AwaitAnimationsAndEmitCompleteAsync(_cts.Token);
-        }
-
-        private void StopAwait()
-        {
-            CancelCurrentTask();
-        }
-
-        private void CancelCurrentTask()
-        {
-            if (_cts != null)
-            {
-                _cts.Cancel();
-                _cts.Dispose();
-                _cts = null;
-            }
-        }
-
-        private async Task AwaitAnimationsAndEmitCompleteAsync(CancellationToken ct)
-        {
-            try
-            {
-                ct.ThrowIfCancellationRequested();
-                await _semaphore.WaitAsync(ct);
-
-                try
-                {
-                    if (ct.IsCancellationRequested) return;
-
-                    _tcsTween?.TrySetResult(true);
-                    _tcsAnimator?.TrySetResult(true);
-
-                    bool tweenValid = _tween != null && IsInstanceValid(_tween) && _tween.IsValid();
-                    bool animatorValid = IsAnimatorEnabled && Animator != null && Animator.animTween != null && IsInstanceValid(Animator.animTween);
-
-                    if (!tweenValid && !animatorValid)
-                    {
-                        EmitSignal(SignalName.AnimationComplete);
-                        return;
-                    }
-
-                    var tasks = new List<Task>();
-                    
-                    if (tweenValid)
-                    {
-                        _tcsTween = new TaskCompletionSource<bool>();
-                        // 这里我们依赖 _tween.Finished += OnTweenFinished 或者 ClearTween() 来设置结果
-                        // 为了支持取消，我们注册一个回调：如果 Token 取消了，TCS 也设为取消
-                        using (ct.Register(() => _tcsTween?.TrySetCanceled()))
-                        {
-                            tasks.Add(_tcsTween.Task);
-                        }
-                    }
-
-                    if (animatorValid)
-                    {
-                        _tcsAnimator = new TaskCompletionSource<bool>();
-                        // 简单起见，这里假设 Animator 逻辑类似。实际需绑定 Animator 的 Finish 事件。
-                        // tasks.Add(_tcsAnimator.Task); 
-                        // (为了演示代码完整性，这里暂不添加 Animator 的详细绑定，原理同上)
-                        using (ct.Register(() => _tcsAnimator?.TrySetCanceled()))
-                        {
-                            tasks.Add(_tcsAnimator.Task);
-                        }
-                    }
-                    
-                    // 等待所有动画完成
-                    // 如果 ct 被取消，TCS 会变为 Canceled 状态，Task.WhenAll 会抛出异常
-                    await Task.WhenAll(tasks);
-
-                    // 动画都跑完了，最后检查一次，如果没有取消，才发信号
-                    if (!ct.IsCancellationRequested)
-                    {
-                        EmitSignal(SignalName.AnimationComplete);
-                    }
-                }
-                finally
-                {
-                    _semaphore.Release();
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                // 这是一个预期的异常。
-                // 当 StopAwait 被调用时，代码会跳到这里。
-                // 我们什么都不做，"默默地" 销毁任务，不发射信号。
-                // GD.Print("Task Cancelled successfully.");
-            }
-            catch (Exception e)
-            {
-                GD.PrintErr($"[VNTextureRect] Error: {e.Message}");
-            }
-        }
-        
-        private void CheckCrossFadeTex()
-        {
-            if (_fadingRect == null || !IsInstanceValid(_fadingRect))
-            {
-                _fadingRect = new TextureRect()
-                {
-                    Name = "CrossFadeRect",
-                    Position = Vector2.Zero,
-                    Size = TextureParams.size,
-                    ExpandMode = ExpandModeEnum.KeepSize,
-                    StretchMode = StretchModeEnum.KeepAspectCentered,
-                    AnchorsPreset = (int)LayoutPreset.FullRect,
-                    Modulate = Colors.Transparent
-                };
-                AddChild(_fadingRect);
-            }
-        }
-        #endregion
-    }
-}
-*/
-
+//删了。
 /*
 上面的代码块我设想的是本类全部接管Animator的生命周期，但写完才发现这样会导致耦合过高，且不易维护。
 各司其职即可。
 Animator的生命周期交给自己管理即可。
 
-按照DialogueManager的生命周期设计思路，一般地，调用settex，cleartex时都应在单个DialogueLine的执行过程。
+按照DialogueManager的生命周期设计思路，一般地，调用set_tex，clear_tex时都应在单个DialogueLine的执行过程。
 也就是说，调用这些方法时，可以看作本类开启了新的生命周期，上一个生命周期会被销毁。
 
 故没有考虑多个方法同时调用的情况。
@@ -420,11 +13,15 @@ Animator的生命周期交给自己管理即可。
 暴露动画完成信号，DialogueManager只需订阅本类的动画完成信号即可，不用考虑边界等。
 应该。
 
-tex blur暂时没写。
 251130
 */
 
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using Godot;
+using VisualNovel.GameCore.Utilities;
 
 namespace VisualNovel
 {
@@ -478,8 +75,24 @@ namespace VisualNovel
         );
     }
 
+    public class SingleTextureSetter
+    {
+        public string path;
+        public VNTextureRect.TranslationType translationType;
+        public float duration;
+        public int zIndex;
+
+        public SingleTextureSetter(string path, VNTextureRect.TranslationType translationType, float duration, int zIndex)
+        {
+            this.path = path;
+            this.translationType = translationType;
+            this.duration = duration;
+            this.zIndex = zIndex;
+        }
+    }
+
     [GlobalClass]
-    public partial class VNTextureRect : TextureRect
+    public partial class VNTextureRect : TextureRect, ISignalNotifier
     {
         public enum TranslationType
         {
@@ -487,20 +100,50 @@ namespace VisualNovel
             CrossFade,
             FadeOutIn
         };
-
-        private const string BLUR_SHADER_PATH = "res://VisualNovel/Shaders/blur.gdshader";
         [Signal] public delegate void AnimationCompleteEventHandler();
 
-        private Material _blurMaterial;
+        public StringName CompletionSignal => SignalName.AnimationComplete;
+
         public TextureParams TextureParams { get; private set; }
         private TextureRect _fadingRect;
         private Tween _tween;
+        
+        //use when translating
         private TranslationType _currentTranslationType = TranslationType.Immediate;
         private Texture2D _currentTransitionTex;
+        private SingleTextureSetter _currentSetter;
 
         public bool IsAnimatorEnabled { get; private set; } = true;
         public TextureAnimator Animator { get; private set; }
 
+        /// <summary>
+        /// 动画队列
+        /// </summary>
+        private readonly Queue<SingleTextureSetter> _translationQueue = new();
+
+        private bool _isProcessingQueue = false;
+        private bool isProcessingQueue
+        {
+            get => _isProcessingQueue;
+            set
+            {
+                _isProcessingQueue = value;
+                if (value)
+                {
+                    //开始处理队列
+                    _current_tcs?.TrySetResult(true);
+                    _current_tcs = null;
+                    _cancellationTokenSource?.Cancel();
+                    _cancellationTokenSource = new CancellationTokenSource();
+                    _ = ProcessTranslationQueue(_cancellationTokenSource);
+                }
+            }
+        }
+
+        private TaskCompletionSource<bool> _current_tcs = null;
+        private CancellationTokenSource _cancellationTokenSource = null;
+
+        //init params(constructor use only)
         string init_TexturePath = "";
         TranslationType init_TranslationType = TranslationType.Immediate;
         int init_ZIndex = 1;
@@ -539,15 +182,6 @@ namespace VisualNovel
         public override void _Ready()
         {
             base._Ready();
-            CheckCrossFadingTex();
-
-            // 加载 Shader
-            var blurShader = GD.Load<Shader>(BLUR_SHADER_PATH);
-            if (blurShader != null)
-            {
-                _blurMaterial = new ShaderMaterial() { Shader = blurShader };
-            }
-
             if (IsAnimatorEnabled)
             {
                 Animator = new TextureAnimator(this);
@@ -557,12 +191,35 @@ namespace VisualNovel
             SetTexture(init_TexturePath, init_TranslationType, GlobalSettings.AnimationDefaultTime, init_ZIndex);
         }
 
-        public override void _ExitTree()
+        //所有的SetTexture调用都会在同一帧传入，随后添加到队列，排队执行
+        public virtual void SetTexture(string path, TranslationType setType = TranslationType.Immediate, float duration = 0.5f, int zIndex = 1)
         {
-            base._ExitTree();
+            _translationQueue.Enqueue(new SingleTextureSetter(path, setType, duration, zIndex));
+            if (!isProcessingQueue) isProcessingQueue = true;//setter访问器开始处理队列
         }
 
-        public virtual void SetTexture(string path, TranslationType setType = TranslationType.Immediate, float duration = 0.5f, int zIndex = 1)
+        private async Task ProcessTranslationQueue(CancellationTokenSource token)
+        {
+            try
+            {
+                while (_translationQueue.Count > 0)
+                {
+                    if (token.IsCancellationRequested) return;
+                    var setter = _translationQueue.Dequeue();
+                    _currentSetter = setter;
+                    await SetTextureAtOnceAsync(setter.path, setter.translationType, setter.duration, setter.zIndex);
+                }
+                EmitSignal(SignalName.AnimationComplete);
+            }
+            finally
+            {
+                //处理被取消的情况
+                isProcessingQueue = false;
+            }
+            
+        }
+
+        protected async virtual Task SetTextureAtOnceAsync(string path, TranslationType setType = TranslationType.Immediate, float duration = 0.5f, int zIndex = 1)
         {
             _currentTranslationType = setType;
             ClearTween();
@@ -582,6 +239,8 @@ namespace VisualNovel
                     break;
 
                 case TranslationType.CrossFade:
+                    New_Tcs();
+
                     _fadingRect.Modulate = Colors.Transparent;
                     Modulate = Colors.White;
                     SetCrossFadeTexActive(true);
@@ -593,10 +252,13 @@ namespace VisualNovel
                     _tween.TweenProperty(this, "modulate:a", 0, duration);
                     _tween.SetTrans(Tween.TransitionType.Sine);
                     _tween.SetEase(Tween.EaseType.InOut);
-                    _tween.Finished += OnTweenFinished;
+
+                    await Start_Await();
                     break;
 
                 case TranslationType.FadeOutIn:
+                    New_Tcs();
+
                     _fadingRect.Modulate = Colors.Transparent;
                     Modulate = Colors.White;
                     SetCrossFadeTexActive(true);
@@ -608,9 +270,26 @@ namespace VisualNovel
                     _tween.TweenProperty(_fadingRect, "modulate:a", 1, duration / 2);
                     _tween.SetTrans(Tween.TransitionType.Sine);
                     _tween.SetEase(Tween.EaseType.InOut);
-                    _tween.Finished += OnTweenFinished;
+                   
+                   await Start_Await();
                     break;
             }
+
+            void New_Tcs()
+            {
+                _current_tcs?.TrySetResult(true);
+                _current_tcs = null;
+                _current_tcs = new TaskCompletionSource<bool>();
+            }
+
+            async Task Start_Await()
+            {
+                _tween.Finished += () => _current_tcs.TrySetResult(true);
+
+                await _current_tcs.Task;//等待补间完成
+                OnOperationFinished();//收尾工作，还原状态
+            }
+            
         }
 
         public virtual void ClearTexture(float duration = -1, bool immediate = false, bool deleteAfterFade = false)
@@ -618,6 +297,10 @@ namespace VisualNovel
              ClearTween();
              if (immediate)
              {
+                StopProcessingQueue();
+                _translationQueue.Clear();
+                ClearTween();
+
                 Texture = null;
                 SetCrossFadeTexActive(false);
                 _fadingRect.Modulate = Colors.Transparent;
@@ -625,33 +308,80 @@ namespace VisualNovel
              }
              else
              {
+                //取消所有队列处理，淡化当前显示的纹理
+
+                StopProcessingQueue();
+                _translationQueue.Clear();
+                ClearTween();
+
                 duration = duration <= 0 ? GlobalSettings.AnimationDefaultTime : duration;
                 _tween = CreateTween();
-                _tween.TweenProperty(this, "modulate:a", 0, duration)
-                .SetTrans(Tween.TransitionType.Sine)
-                .SetEase(Tween.EaseType.InOut);
-                _tween.Finished += OnTweenFinished;
-                SetCrossFadeTexActive(false);
-                if (deleteAfterFade)  _tween.Finished += QueueFree;
+                _tween.TweenProperty(this, "modulate:a", 0, duration);
+                _tween.TweenProperty(_fadingRect, "modulate:a", 1, duration);
+                _tween.SetTrans(Tween.TransitionType.Sine);
+                _tween.SetEase(Tween.EaseType.InOut);
+                _tween.Connect(Tween.SignalName.Finished, Callable.From(() =>
+                {
+                    Texture = null;
+                    SetCrossFadeTexActive(false);
+                    Modulate = Colors.Transparent;
+                    _fadingRect.Modulate = Colors.Transparent;
+
+                    if (deleteAfterFade) QueueFree();
+                }), (uint)ConnectFlags.OneShot);
              }
         }
 
         public virtual void InterruptTranslation()
         {
-            if (_currentTranslationType == TranslationType.Immediate) return;
+            /*if (_currentTranslationType == TranslationType.Immediate) return;
             ClearTween(); 
             
             Texture = _currentTransitionTex;
             SetCrossFadeTexActive(false);
             _fadingRect.Modulate = Colors.Transparent;
             Modulate = Colors.White;
-            //EmitSignal(SignalName.AnimationComplete);
+            EmitSignal(SignalName.AnimationComplete);*/
+
+            StopProcessingQueue();
+            ClearTween();
+            SingleTextureSetter setter;
+
+            if (_translationQueue.Count == 0)
+            {
+                if (_currentSetter == null) return;
+                _translationQueue.Clear();
+                _currentTransitionTex = _currentSetter.path != "" ? VNResloader.LoadTexture2D(_currentSetter.path) : null;
+                OnOperationFinished();
+                return;
+            }
+
+            if (_translationQueue.Count > 1)
+            {
+                while (_translationQueue.Count > 1)
+                {
+                    _translationQueue.Dequeue();
+                }
+            }
+            var temp = _translationQueue.Dequeue();
+            setter = new SingleTextureSetter(temp.path, temp.translationType, temp.duration, temp.zIndex);
+            _translationQueue.Clear();
+            _currentTransitionTex = setter.path != "" ? VNResloader.LoadTexture2D(setter.path) : null;
+            OnOperationFinished();
         }
 
         private void SetCrossFadeTexActive(bool active)
         {
             _fadingRect.Visible = active;
             _fadingRect.ProcessMode = active ? ProcessModeEnum.Always : ProcessModeEnum.Disabled;
+        }
+
+        private void StopProcessingQueue()
+        {
+            _current_tcs?.TrySetResult(true);
+            _current_tcs = null;
+            _cancellationTokenSource?.Cancel();
+            _cancellationTokenSource = null;
         }
 
         private void ClearTween()
@@ -663,8 +393,10 @@ namespace VisualNovel
             }
         }
 
-        private void OnTweenFinished()
+        private void OnOperationFinished()
         {
+            if (_cancellationTokenSource?.IsCancellationRequested == true) return;
+
             if (_currentTranslationType == TranslationType.CrossFade || _currentTranslationType == TranslationType.FadeOutIn)
             {
                 Texture = _currentTransitionTex;
@@ -673,25 +405,5 @@ namespace VisualNovel
                 Modulate = Colors.White;
             }
         }
-
-
-        private void CheckCrossFadingTex()
-        {
-            if (_fadingRect == null || !IsInstanceValid(_fadingRect))
-            {
-                _fadingRect = new TextureRect()
-                {
-                    Name = "CrossFadeRect",
-                    Position = Vector2.Zero,
-                    Size = TextureParams.size,
-                    ExpandMode = ExpandModeEnum.KeepSize,
-                    StretchMode = StretchModeEnum.KeepAspectCentered,
-                    AnchorsPreset = (int)LayoutPreset.FullRect,
-                    Modulate = Colors.Transparent
-                };
-                AddChild(_fadingRect);
-            }
-        }
-
     }
 }

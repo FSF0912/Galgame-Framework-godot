@@ -1,0 +1,14 @@
+[gd_scene format=3 uid="uid://x1d64t42kviu"]
+
+[ext_resource type="Script" uid="uid://byjrns4xrmc8f" path="res://VisualNovel/Scirpts/GameCore/VNTextureRect.cs" id="1_giqjr"]
+
+[node name="VNTextureRect" type="TextureRect" unique_id=141650468]
+stretch_mode = 5
+script = ExtResource("1_giqjr")
+metadata/_custom_type_script = "uid://byjrns4xrmc8f"
+
+[node name="FadingRect" type="TextureRect" parent="." unique_id=543621233]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+stretch_mode = 5

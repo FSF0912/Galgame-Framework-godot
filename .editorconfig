@@ -2,3 +2,6 @@ root = true
 
 [*]
 charset = utf-8
+
+# IDE0052: 删除未读的私有成员
+dotnet_diagnostic.IDE0052.severity = suggestion

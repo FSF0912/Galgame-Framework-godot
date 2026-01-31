@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Godot;
 
@@ -40,6 +41,7 @@ namespace VisualNovel
 
     public interface IDialogueCommand
     {
+        public Action CompletionCallback { get; set; }
         public void Execute();
         public void Skip();
         public void Interrupt();
@@ -47,6 +49,7 @@ namespace VisualNovel
 
     public struct SpeakerLine : IDialogueCommand
     {
+        public Action CompletionCallback { get; set; } = null;
         public string SpeakerName;
         public string SpeakContext;
 
@@ -61,6 +64,15 @@ namespace VisualNovel
         {
             var dm = DialogueManager.Instance;
             dm.SpeakerNameLabel.Text = SpeakerName;
+            Action wrapper = null;
+            wrapper = () => 
+            {
+               dm.typeWriter.OnComplete -= wrapper; // 自我销毁，清理干净
+                CompletionCallback?.Invoke();        // 执行真正的逻辑
+            };
+
+                // 3. 这里的逻辑就像你最初想写的那样
+            dm.typeWriter.OnComplete += wrapper;
             dm.typeWriter.TypeText(SpeakContext);
         }
 

@@ -3,13 +3,15 @@ using Godot;
 
 namespace VisualNovel
 {
-    public partial class TypeWriter : RichTextLabel
+    public partial class TypeWriter : RichTextLabel, ISignalNotifier
     {
         [Export(PropertyHint.Range, "0.01,1")] public float PerCharSpeed = 0.03f;
         public bool IsTyping { get; private set; }
 
         [Signal] public delegate void StartTypingEventHandler();
         [Signal] public delegate void OnCompleteEventHandler();
+        public StringName CompletionSignal => SignalName.OnComplete;
+        
         [Signal] public delegate void OnInterruptEventHandler();
 
         private Tween _tween;
