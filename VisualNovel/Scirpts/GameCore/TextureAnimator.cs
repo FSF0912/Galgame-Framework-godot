@@ -23,7 +23,7 @@ namespace VisualNovel
         /// <summary>
         /// 目标TextureRect
         /// </summary>
-        private TextureRect _target;
+        private VNTextureController _target;
 
         /// <summary>
         /// 动画Tween
@@ -39,7 +39,7 @@ namespace VisualNovel
         private float _shakeElapsed = 0f;
         private float _currentShakeIntensity = 0f;
 
-        public TextureAnimator(TextureRect target)
+        public TextureAnimator(VNTextureController target)
         {
             _target = target;
         }

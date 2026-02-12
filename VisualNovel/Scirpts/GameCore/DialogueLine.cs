@@ -41,7 +41,6 @@ namespace VisualNovel
 
     public interface IDialogueCommand
     {
-        public Action CompletionCallback { get; set; }
         public void Execute();
         public void Skip();
         public void Interrupt();
@@ -49,7 +48,6 @@ namespace VisualNovel
 
     public struct SpeakerLine : IDialogueCommand
     {
-        public Action CompletionCallback { get; set; } = null;
         public string SpeakerName;
         public string SpeakContext;
 
@@ -67,12 +65,12 @@ namespace VisualNovel
             Action wrapper = null;
             wrapper = () => 
             {
-               dm.typeWriter.OnComplete -= wrapper; // 自我销毁，清理干净
-                CompletionCallback?.Invoke();        // 执行真正的逻辑
+               //dm.typeWriter.OnComplete -= wrapper; // 自我销毁，清理干净
+                //CompletionCallback?.Invoke();        // 执行真正的逻辑
             };
 
                 // 3. 这里的逻辑就像你最初想写的那样
-            dm.typeWriter.OnComplete += wrapper;
+            //dm.typeWriter.OnComplete += wrapper;
             dm.typeWriter.TypeText(SpeakContext);
         }
 
@@ -107,13 +105,13 @@ namespace VisualNovel
 
         public int ID;
         public TextureMode textureMode;
-        public VNTextureRect.TranslationType translationType = VNTextureRect.TranslationType.CrossFade;
+        public VNTextureController.TranslationType translationType = VNTextureController.TranslationType.CrossFade;
         public string targetTexturePath;
         public bool immediate = false;
         public float fadeDuration = -1.0f;
 
         public TextureLine(int id, TextureMode mode,
-        VNTextureRect.TranslationType translationType = VNTextureRect.TranslationType.CrossFade,
+        VNTextureController.TranslationType translationType = VNTextureController.TranslationType.CrossFade,
         string path = null, float fadeDuration = -1.0f, bool immediate = false)
         {
             ID = id;
@@ -132,14 +130,14 @@ namespace VisualNovel
                 switch (textureMode)
                 {
                     case TextureMode.Switch:
-                        targetRef.SetTexture(path: targetTexturePath, setType: translationType, duration: fadeDuration, zIndex : ID);
+                        targetRef.SetTextureOrdered(path: targetTexturePath, setType: translationType, duration: fadeDuration, zIndex : ID);
                         break;
                     case TextureMode.Clear:
-                        targetRef.ClearTexture(fadeDuration, immediate: immediate);
+                        targetRef.DeleteTextureOrdered(fadeDuration, immediate: immediate);
                         break;
                     case TextureMode.Delete:
                         dm.SceneActiveTextures.Remove(ID);
-                        targetRef.ClearTexture(fadeDuration, deleteAfterFade: true, immediate: immediate);
+                        targetRef.DeleteTextureOrdered(fadeDuration, deleteAfterFade: true, immediate: immediate);
                         break;
                 }
             }
@@ -168,10 +166,10 @@ namespace VisualNovel
                 switch (textureMode)
                 {
                     case TextureMode.Switch:
-                        targetRef.SetTexture(targetTexturePath, VNTextureRect.TranslationType.Immediate, zIndex: ID);
+                        targetRef.SetTextureOrdered(targetTexturePath, VNTextureController.TranslationType.Immediate, zIndex: ID);
                         break;
                     case TextureMode.Clear:
-                        targetRef.ClearTexture(immediate: true);
+                        targetRef.DeleteTextureOrdered(immediate: true);
                         break;
                     case TextureMode.Delete:
                         dm.SceneActiveTextures.Remove(ID);
@@ -182,7 +180,7 @@ namespace VisualNovel
             else
             {
                 if (textureMode == TextureMode.Delete || textureMode == TextureMode.Clear) return;
-                dm.CreateTextureRect(ID, 0, defaultTexPath: targetTexturePath, translationType: VNTextureRect.TranslationType.Immediate);
+                dm.CreateTextureRect(ID, 0, defaultTexPath: targetTexturePath, translationType: VNTextureController.TranslationType.Immediate);
                 Skip();
             }
         }

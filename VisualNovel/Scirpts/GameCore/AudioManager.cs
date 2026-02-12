@@ -130,7 +130,7 @@ namespace VisualNovel
                 return;
             }
 
-            var stream = VNResloader.LoadAudio(resourcePath);
+            var stream = GD.Load<AudioStream>(resourcePath);
             if (stream == null)
             {
                 GD.PrintErr($"BGM resource not found: {resourcePath}");
@@ -197,7 +197,7 @@ namespace VisualNovel
                 return;
             }
 
-            var stream = VNResloader.LoadAudio(resourcePath);
+            var stream = GD.Load<AudioStream>(resourcePath);
             if (stream == null)
             {
                 GD.PrintErr($"SFX resource not found: {resourcePath}");
@@ -243,7 +243,7 @@ namespace VisualNovel
                 return;
             }
 
-            var stream = VNResloader.LoadAudio(resourcePath);
+            var stream = GD.Load<AudioStream>(resourcePath);
             if (stream == null)
             {
                 GD.PrintErr($"Voice资源未找到: {resourcePath}");

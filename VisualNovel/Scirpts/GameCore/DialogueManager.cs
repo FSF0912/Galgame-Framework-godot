@@ -30,8 +30,8 @@ namespace VisualNovel
 		[ExportGroup("References")]
 		[Export] public Label SpeakerNameLabel;
 		[Export] public TypeWriter typeWriter;
-		[Export] public VNTextureRect BackGroundTexture;
-		[Export] public VNTextureRect AvatarTexture;
+		[Export] public VNTextureController BackGroundTexture;
+		[Export] public VNTextureController AvatarTexture;
 		[Export] public Control TextureContainer;
 		[Export] public Control BranchContainer;
 		[Export] public PackedScene BranchButtonScene;
@@ -40,7 +40,7 @@ namespace VisualNovel
 		[Export] public bool AllowInput = true;
 
 		DialogueLine _currentDialogueLine;
-		public readonly Dictionary<int, VNTextureRect> SceneActiveTextures = [];
+		public readonly Dictionary<int, VNTextureController> SceneActiveTextures = [];
 
 		//简并变量
 		private AudioManager _am;
@@ -117,13 +117,13 @@ namespace VisualNovel
 		}
 
 
-		public VNTextureRect CreateTextureRect(int id, float duration, TextureParams textureParams = null,
+		public VNTextureController CreateTextureRect(int id, float duration, TextureParams textureParams = null,
 		string defaultTexPath = null,
-		VNTextureRect.TranslationType translationType = VNTextureRect.TranslationType.CrossFade)
+		VNTextureController.TranslationType translationType = VNTextureController.TranslationType.CrossFade)
 		{
-			if (SceneActiveTextures.TryGetValue(id, out VNTextureRect value)) return value;
+			if (SceneActiveTextures.TryGetValue(id, out VNTextureController value)) return value;
 
-			var texture = new VNTextureRect(textureParams, defaultTexPath, translationType, id)
+			var texture = new VNTextureController(textureParams, defaultTexPath, translationType, id)
 			{ Name = $"TextureRect_{id}" };
 
 			TextureContainer.AddChild(texture);
