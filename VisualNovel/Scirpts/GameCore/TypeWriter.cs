@@ -3,7 +3,7 @@ using Godot;
 
 namespace VisualNovel
 {
-    public partial class TypeWriter : RichTextLabel, ISignalNotifier
+    public partial class TypeWriter : RichTextLabel, IDialogueProcessable
     {
         [Export(PropertyHint.Range, "0.01,1")] public float PerCharSpeed = 0.03f;
         public bool IsTyping { get; private set; }
@@ -122,8 +122,9 @@ namespace VisualNovel
 
         public override void _ExitTree()
         {
-            base._ExitTree();
             StopTween();
+            base._ExitTree();
+
         }
     }
 

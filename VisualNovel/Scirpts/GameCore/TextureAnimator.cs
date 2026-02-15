@@ -10,7 +10,7 @@ namespace VisualNovel
     /// 动画控制器类，作为CrossFadeTextureRect的子节点
     /// </summary>
     [GlobalClass]
-    public partial class TextureAnimator : Node, ISignalNotifier
+    public partial class TextureAnimator : Node, IDialogueProcessable
     {
         /// <summary>
         /// 动画完成信号
@@ -67,7 +67,7 @@ namespace VisualNovel
             duration = duration <= 0 ? GlobalSettings.AnimationDefaultTime : duration;
             EnsureTween();
             if (!parallel) animTween.SetParallel(false);
-            animTween!.TweenProperty(_target, "position", value, duration).SetTrans(trans).SetEase(ease);
+            animTween.TweenProperty(_target, "position", value, duration).SetTrans(trans).SetEase(ease);
             if (!parallel) animTween.SetParallel();
         }
         
@@ -77,14 +77,14 @@ namespace VisualNovel
             _hasImmediate = true;
         }
 
-        public void AddRotate(float degrees, float duration, bool isLocal = true, bool parallel = true,
+        public void AddRotate(float degrees, float duration, bool parallel = true,
                      Tween.TransitionType trans = Tween.TransitionType.Quart,
                      Tween.EaseType ease = Tween.EaseType.Out)
         {
             duration = duration <= 0 ? GlobalSettings.AnimationDefaultTime : duration;
             EnsureTween();
             if (!parallel) animTween.SetParallel(false);
-            animTween!.TweenProperty(_target,
+            animTween.TweenProperty(_target,
              "rotation_degrees", degrees, duration).SetTrans(trans).SetEase(ease);
             if (!parallel) animTween.SetParallel();
         }
@@ -102,7 +102,7 @@ namespace VisualNovel
             duration = duration <= 0 ? GlobalSettings.AnimationDefaultTime : duration;
             EnsureTween();
             if (!parallel) animTween.SetParallel(false);
-            animTween!.TweenProperty(_target, "scale", scale, duration).SetTrans(trans).SetEase(ease);
+            animTween.TweenProperty(_target, "scale", scale, duration).SetTrans(trans).SetEase(ease);
             if (!parallel) animTween.SetParallel();
         }
 
@@ -151,8 +151,8 @@ namespace VisualNovel
             duration = duration <= 0 ? GlobalSettings.AnimationDefaultTime : duration;
             EnsureTween();
 
-            if (!parallel) animTween!.SetParallel(parallel);
-            animTween!.TweenProperty(_target, "modulate", target, duration)
+            if (!parallel) animTween.SetParallel(parallel);
+            animTween.TweenProperty(_target, "modulate", target, duration)
                 .SetTrans(trans).SetEase(ease);
 
             if (!parallel) animTween.SetParallel();
@@ -172,7 +172,7 @@ namespace VisualNovel
             EnsureTween();
 
             if (!parallel) animTween.SetParallel(parallel);
-            animTween!.TweenProperty(_target, "modulate:a", alpha, duration)
+            animTween.TweenProperty(_target, "modulate:a", alpha, duration)
                 .SetTrans(trans).SetEase(ease);
 
             if (!parallel) animTween.SetParallel();
@@ -195,7 +195,7 @@ namespace VisualNovel
             {
                 animTween = CreateTween();
                 animTween.SetParallel();
-                animTween!.Finished += OnTweenFinished;
+                animTween.Finished += OnTweenFinished;
             }
         }
 

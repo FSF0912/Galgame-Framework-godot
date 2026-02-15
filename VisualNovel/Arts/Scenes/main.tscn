@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://cq4cnx5k3s7rd" path="res://VisualNovel/Scirpts/GameCore/DialogueManager.cs" id="1_ncjkk"]
 [ext_resource type="FontFile" uid="uid://dhltf2252erdj" path="res://VisualNovel/Arts/Fonts/MiSans-Demibold.ttf" id="2_6jpcp"]
+[ext_resource type="PackedScene" uid="uid://x1d64t42kviu" path="res://VisualNovel/Arts/Scenes/VNTextureController.tscn" id="2_sja0j"]
 [ext_resource type="FontFile" uid="uid://bve6tao483hq3" path="res://VisualNovel/Arts/Fonts/MiSans-Normal.ttf" id="3_sja0j"]
 [ext_resource type="Script" uid="uid://clwik8446tbcn" path="res://VisualNovel/Scirpts/GameCore/TypeWriter.cs" id="4_dv76j"]
 
@@ -637,7 +638,7 @@ variation_transform = Transform2D(1, 0.2, 0, 1, 0, 0)
 [node name="Root" type="Node2D" unique_id=857564448]
 top_level = true
 
-[node name="DialogueUI" type="Control" parent="." unique_id=1740557762 node_paths=PackedStringArray("SpeakerNameLabel", "typeWriter", "BackGroundTexture", "TextureContainer")]
+[node name="DialogueUI" type="Control" parent="." unique_id=1740557762 node_paths=PackedStringArray("SpeakerNameLabel", "typeWriter", "TextureContainer")]
 layout_mode = 3
 anchors_preset = 0
 offset_right = 1920.0
@@ -647,9 +648,8 @@ size_flags_vertical = 4
 script = ExtResource("1_ncjkk")
 SpeakerNameLabel = NodePath("DialogueDisplayArea/SpeakerName")
 typeWriter = NodePath("DialogueDisplayArea/RichTextLabel")
-BackGroundTexture = NodePath("BackGroundTexture")
 TextureContainer = NodePath("TextureContainer")
-EnableAutoplay = true
+VNTextureControllerScene = ExtResource("2_sja0j")
 
 [node name="BackGroundTexture" type="TextureRect" parent="DialogueUI" unique_id=95184536]
 layout_mode = 0
@@ -657,9 +657,12 @@ offset_right = 1920.0
 offset_bottom = 1080.0
 
 [node name="TextureContainer" type="Control" parent="DialogueUI" unique_id=1938871933]
-anchors_preset = 0
-offset_right = 1920.0
-offset_bottom = 1080.0
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="DialogueDisplayArea" type="ColorRect" parent="DialogueUI" unique_id=432197791]
 z_index = 10

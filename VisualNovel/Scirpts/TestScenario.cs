@@ -29,8 +29,7 @@ namespace VisualNovel
 
                 new DialogueLine(new List<IDialogueCommand>
                 {
-                    new SpeakerLine("", "午后的实验室，阳光有些慵懒地洒在精密仪器上。"),
-                    new Audioline(Audioline.AudioType.BGM, Audioline.AudioPlayType.Play, path:"res://test/bgmusic_1.mp3", loop: true)
+                    new SpeakerLine("", "午后的实验室，阳光有些慵懒地洒在精密仪器上。")
                 }),
 
                 // 冬日博士登场
@@ -87,7 +86,7 @@ namespace VisualNovel
                 new DialogueLine(new List<IDialogueCommand>
                 {
                     // new TextureAnimationLine(-100, TextureAnimationLine.AnimationType.ColorTint, 0.5f, targetVector: null, targetColor: new Color(1, 0.6f, 0.6f)),
-                    new Audioline(Audioline.AudioType.SFX, Audioline.AudioPlayType.Play, path:"res://test/manbo.mp3", loop: true),
+                    // new Audioline(Audioline.AudioType.SFX, Audioline.AudioPlayType.Play, path:"res://test/manbo.mp3", loop: true),
                     // new TextureAnimationLine(3, TextureAnimationLine.AnimationType.ColorTint, 0.5f, targetVector: null, targetColor: new Color(1.5f, 1.5f, 1.5f)),
                     new SpeakerLine("芳乃", "诶？！博、博士，天花板在跳舞，世界好像在融化！")
                 }),
@@ -104,7 +103,7 @@ namespace VisualNovel
                 new DialogueLine(new List<IDialogueCommand>
                 {
                     new TextureLine(2, TextureLine.TextureMode.Switch, path:"res://test/drwind.jpg"),
-                    new Audioline(Audioline.AudioType.SFX, Audioline.AudioPlayType.Play, path:"res://test/laugh.wav"),
+                    // new Audioline(Audioline.AudioType.SFX, Audioline.AudioPlayType.Play, path:"res://test/laugh.wav"),
                     // new TextureAnimationLine(3, TextureAnimationLine.AnimationType.Fade, 0.5f, targetVector: null, alpha: 0f),
                     new SpeakerLine("冬日博士", "既然这样，就让我们去那个世界看看吧。")
                 }),
@@ -114,7 +113,7 @@ namespace VisualNovel
                 {
                     new TextureLine(-100, TextureLine.TextureMode.Switch, path:"res://test/nine.png"),
                     // new TextureAnimationLine(-100, TextureAnimationLine.AnimationType.ColorTint, 1.0f, targetVector: null, targetColor: new Color(1, 1, 1)),
-                    new Audioline(Audioline.AudioType.BGM, Audioline.AudioPlayType.Play, path:"res://test/bgmusic_1.mp3", loop: true),
+                    // new Audioline(Audioline.AudioType.BGM, Audioline.AudioPlayType.Play, path:"res://test/bgmusic_1.mp3", loop: true),
                     // new TextureAnimationLine(2, TextureAnimationLine.AnimationType.Move, 0.8f, targetVector:new Vector2(850, 150), isRelative: false),
                     new SpeakerLine("芳乃", "这里是……学校的街道？刚才的实验室竟然消失了……")
                 }),
@@ -133,8 +132,8 @@ namespace VisualNovel
                     new TextureLine(-100, TextureLine.TextureMode.Clear),
                     new TextureLine(1, TextureLine.TextureMode.Delete),
                     new TextureLine(2, TextureLine.TextureMode.Delete),
-                    new TextureLine(3, TextureLine.TextureMode.Delete),
-                    new Audioline(Audioline.AudioType.BGM, Audioline.AudioPlayType.Stop, null, fadeDuration: 1.5f) { audioPlayType = Audioline.AudioPlayType.Stop }
+                    new TextureLine(3, TextureLine.TextureMode.Delete)
+                    // new Audioline(Audioline.AudioType.BGM, Audioline.AudioPlayType.Stop, null, fadeDuration: 1.5f) { audioPlayType = Audioline.AudioPlayType.Stop }
                 }),
                 
                 new DialogueLine(new List<IDialogueCommand>

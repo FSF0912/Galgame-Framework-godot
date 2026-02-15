@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://x1d64t42kviu"]
 
 [ext_resource type="Script" uid="uid://byjrns4xrmc8f" path="res://VisualNovel/Scirpts/GameCore/VNTextureController.cs" id="1_giqjr"]
+[ext_resource type="Texture2D" uid="uid://baxob1teiw03w" path="res://test/milk.jpg" id="2_xppvy"]
 
 [node name="VNTextureRect" type="Control" unique_id=1993900251]
 layout_mode = 3
@@ -24,6 +25,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+texture = ExtResource("2_xppvy")
 expand_mode = 1
 stretch_mode = 5
 
@@ -35,5 +37,6 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+texture = ExtResource("2_xppvy")
 expand_mode = 1
 stretch_mode = 5

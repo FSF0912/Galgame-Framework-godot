@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Godot;
+using System.Linq;
+using System.Threading;
 
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
 
@@ -18,10 +21,10 @@ namespace VisualNovel
 	[GlobalClass]
 	public partial class DialogueManager : Control
 	{
-		public static DialogueManager Instance;
+        public static DialogueManager Instance;
 
 
-		[Signal] public delegate void AfterExecuteStartEventHandler();
+        [Signal] public delegate void AfterExecuteStartEventHandler();
 		[Signal] public delegate void BeforeExecuteStartEventHandler();
 		[Signal] public delegate void ExecuteCompleteEventHandler();
 
@@ -30,20 +33,24 @@ namespace VisualNovel
 		[ExportGroup("References")]
 		[Export] public Label SpeakerNameLabel;
 		[Export] public TypeWriter typeWriter;
-		[Export] public VNTextureController BackGroundTexture;
-		[Export] public VNTextureController AvatarTexture;
-		[Export] public Control TextureContainer;
-		[Export] public Control BranchContainer;
-		[Export] public PackedScene BranchButtonScene;
+		[Export] private VNTextureController BackGroundTexture;
+		[Export] private VNTextureController AvatarTexture;
+		[Export] private Control TextureContainer;
+		[Export] private Control BranchContainer;
+		[ExportGroup("Scenes")]
+		[Export] private PackedScene VNTextureControllerScene;
+		[Export] private PackedScene BranchButtonScene;
 
 		[ExportGroup("Settings")]
-		[Export] public bool AllowInput = true;
+		[Export] private bool AllowInput = true;
 
 		DialogueLine _currentDialogueLine;
 		public readonly Dictionary<int, VNTextureController> SceneActiveTextures = [];
 
 		//简并变量
 		private AudioManager _am;
+
+		private CancellationTokenSource _cts;
 
 		public override void _EnterTree()
 		{
@@ -63,23 +70,8 @@ namespace VisualNovel
 			SceneActiveTextures.Add(-100, BackGroundTexture);
 			SceneActiveTextures.Add(-200, AvatarTexture);
 
-			BeforeExecuteStart += AutoplayRegistered_BeforeExecuteStart;
-			ExecuteComplete += AutoplayRegistered_ExecuteComplete;
-
 			_am = new AudioManager();
 			AddChild(_am);
-			
-			_autoplayTimer = new Timer
-			{
-				OneShot = true,
-				Name = "AutoplayTimer"
-			};
-			_autoplayTimer.Timeout += () =>
-			{
-				if (gameStatus == GameStatus.WaitingForInput)
-					NextDialogue();
-			};
-			AddChild(_autoplayTimer);
 
 			gameStatus = GameStatus.WaitingForInput;
 			_currentDialogueLine = TestScenario.Get();
@@ -117,98 +109,55 @@ namespace VisualNovel
 		}
 
 
-		public VNTextureController CreateTextureRect(int id, float duration, TextureParams textureParams = null,
+		public VNTextureController CreateTextureRect(int id, float duration = 0f, 
+		Vector2 position = default, float rotation_degrees = 0f, Vector2 scale = default,
 		string defaultTexPath = null,
 		VNTextureController.TranslationType translationType = VNTextureController.TranslationType.CrossFade)
 		{
 			if (SceneActiveTextures.TryGetValue(id, out VNTextureController value)) return value;
 
-			var texture = new VNTextureController(textureParams, defaultTexPath, translationType, id)
-			{ Name = $"TextureRect_{id}" };
+			duration = duration <= 0 ? GlobalSettings.AnimationDefaultTime : duration;
 
+			var texture = VNTextureControllerScene.Instantiate<VNTextureController>();
 			TextureContainer.AddChild(texture);
 			SceneActiveTextures.Add(id, texture);
 
+			texture.Position = position;
+			texture.RotationDegrees = rotation_degrees;
+			texture.Size = scale;
+			texture.SetTextureOrdered(defaultTexPath, translationType, duration);
 			return texture;
 		}
 
 		#region State Management
 
-		uint _pendingTasks = 0;
 
-		//invoke after execute
-		private void AddPendingTask()
+		private async Task RunDialogueLineAsync(CancellationToken cancellationToken)
 		{
-			foreach (var line in _currentDialogueLine.Commands)
+			try
 			{
-				switch (line)
-				{
-					case SpeakerLine:
-						_pendingTasks++;
-						typeWriter.OnComplete -= CompleteTask;
-						typeWriter.OnComplete += CompleteTask;
-						break;
+				await Task.WhenAll(_currentDialogueLine.Execute()
+				.Where(s => IsInstanceValid(s.Item1) && s.Item2 != null && s.Item1.HasSignal(s.Item2) && s.Item2 != string.Empty)
+				.Select(async s => await ToSignal(s.Item1, s.Item2)));
 
-					case Audioline audioline:
-						if (audioline.audioType == Audioline.AudioType.Voice)
-						{
-							_pendingTasks++;
-							_am.VoiceComplete -= CompleteTask;
-							_am.VoiceComplete += CompleteTask;
-						}
-						break;
-
-					case TextureLine textureLine:
-						if (SceneActiveTextures.TryGetValue(textureLine.ID, out var textureRef))
-						{
-							_pendingTasks++;
-							textureRef.AnimationComplete -= CompleteTask;
-							textureRef.AnimationComplete += CompleteTask;
-						}
-						break;
-
-					case TextureAnimationLine animLine:
-						if (SceneActiveTextures.TryGetValue(animLine.ID, out var textureRef1))
-						{
-							_pendingTasks++;
-							textureRef1.Animator.AnimationComplete -= CompleteTask;
-							textureRef1.Animator.AnimationComplete += CompleteTask;
-						}
-						break;
-				}
-			}
-			GD.Print($"Pending tasks: {_pendingTasks}");
-		}
-
-		private void CompleteTask()
-		{
-			if (_pendingTasks > 0) _pendingTasks--;
-
-			if (_pendingTasks == 0 && gameStatus == GameStatus.PerformingAction)
-			{
 				EmitSignal(SignalName.ExecuteComplete);
-				gameStatus = GameStatus.WaitingForInput;
-				GD.Print("All tasks completed, waiting for input.");
 			}
-		}
-
-		private void CompleteTask(uint count)
-		{
-			if (_pendingTasks > 0) _pendingTasks -= count;
-
-			if (_pendingTasks <= 0 && gameStatus == GameStatus.PerformingAction)
+			catch (OperationCanceledException)
 			{
-				EmitSignal(SignalName.ExecuteComplete);
-				gameStatus = GameStatus.WaitingForInput;
-				GD.Print("All tasks completed, waiting for input.");
+				
 			}
+            finally
+            {
+                gameStatus = GameStatus.WaitingForInput;
+            }
 		}
 
 		private void InterruptCurrentDialogue()
 		{
-			_pendingTasks = 0;
-			_currentDialogueLine?.Interrupt();
-			CompleteTask();
+			if (_currentDialogueLine == null) return;
+
+			_cts?.Cancel();
+			_currentDialogueLine.Interrupt();
 		}
 
 		public void NextDialogue()
@@ -217,49 +166,15 @@ namespace VisualNovel
 
 			EmitSignal(SignalName.BeforeExecuteStart);
 
-			InterruptCurrentDialogue();
-			//switch to next dialogue line
+			_cts?.Cancel();
+			_cts = new CancellationTokenSource();
+			//
 			_currentDialogueLine = TestScenario.Get();
 			//
 			gameStatus = GameStatus.PerformingAction;
-			_currentDialogueLine.Execute();
-			AddPendingTask();
-
+			_ = RunDialogueLineAsync(_cts.Token);
 			EmitSignal(SignalName.AfterExecuteStart);
 		}
 		#endregion
-
-		#region Autoplay
-		[ExportGroup("Autoplay")]
-		[Export] public bool EnableAutoplay = false;
-		[Export(PropertyHint.Range, "0.5,5")] public float AutoplayDelay = 2.0f;
-
-		Timer _autoplayTimer;
-
-		#region  Autoplay/Register Methods
-		private void AutoplayRegistered_ExecuteComplete()
-		{
-			if (EnableAutoplay)
-			{
-				StartTimerForAutoplay();
-			}
-		}
-
-		private void AutoplayRegistered_BeforeExecuteStart()
-		{
-			_autoplayTimer.Stop();
-		}
-
-		private void StartTimerForAutoplay()
-		{
-			_autoplayTimer.WaitTime = AutoplayDelay;
-			_autoplayTimer.Start();
-		}
-
-		#endregion
-
-		#endregion
-
-
 	}
 }

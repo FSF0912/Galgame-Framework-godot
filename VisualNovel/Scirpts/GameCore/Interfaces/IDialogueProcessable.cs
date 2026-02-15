@@ -2,7 +2,7 @@ using Godot;
 
 namespace VisualNovel
 {
-    public interface ISignalNotifier
+    public interface IDialogueProcessable
     {
         StringName CompletionSignal { get; }
     }

@@ -63,7 +63,7 @@ namespace VisualNovel
     
 
     [GlobalClass]
-    public partial class VNTextureController : Control, ISignalNotifier
+    public partial class VNTextureController : Control, IDialogueProcessable
     {
         protected record SingleTranslation(string path, TranslationType translationType, float duration, int zIndex);
         public enum TranslationType
@@ -95,23 +95,7 @@ namespace VisualNovel
         private bool isProcessingQueue;
         private TaskCompletionSource<bool> _current_tcs = null;
 
-        //init params(constructor use only)
-        string init_TexturePath = "";
-        TranslationType init_TranslationType = TranslationType.Immediate;
-        int init_ZIndex = 1;
-
         public VNTextureController() { }
-
-        public VNTextureController(Vector2 position, float rotation_degrees, Vector2 scale, string initTexturePath = "", TranslationType initTranslationType = TranslationType.Immediate, int initZIndex = 1)
-        {
-            IsAnimatorEnabled = true;
-            Position = position;
-            RotationDegrees = rotation_degrees;
-            Size = scale;
-            this.init_TexturePath = initTexturePath;
-            this.init_TranslationType = initTranslationType;
-            this.init_ZIndex = initZIndex;
-        }
 
         public override void _Ready()
         {
@@ -123,9 +107,6 @@ namespace VisualNovel
                 Animator = new TextureAnimator(this);
                 AddChild(Animator);
             }
-
-            if (!string.IsNullOrEmpty(init_TexturePath))
-                SetTextureOrdered(init_TexturePath, init_TranslationType, GlobalSettings.AnimationDefaultTime, init_ZIndex);
         }
 
         public override void _ExitTree()

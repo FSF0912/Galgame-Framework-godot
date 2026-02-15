@@ -1,5 +1,6 @@
 using Godot;
 
+namespace VisualNovel;
 public static class Debugger
 {
     public static void PushError(string message, object context = null)

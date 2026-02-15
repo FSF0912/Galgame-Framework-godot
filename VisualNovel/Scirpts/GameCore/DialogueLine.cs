@@ -5,21 +5,23 @@ using Godot;
 namespace VisualNovel
 {
 
-    public class DialogueLine : IDialogueCommand
+    public class DialogueLine
     {
         public List<IDialogueCommand> Commands = new List<IDialogueCommand>();
 
         public DialogueLine(List<IDialogueCommand> commands)
         {
-            Commands = new (commands);
+            Commands = [.. commands];
         }
 
-        public void Execute()
+        public List<(GodotObject, StringName)> Execute()
         {
+            var signals = new List<(GodotObject, StringName)>();
             foreach (var command in Commands)
             {
-                command.Execute();
+                signals.Add(command.Execute());
             }
+            return signals;
         }
 
         public void Interrupt()
@@ -41,7 +43,7 @@ namespace VisualNovel
 
     public interface IDialogueCommand
     {
-        public void Execute();
+        public (GodotObject, StringName) Execute();
         public void Skip();
         public void Interrupt();
     }
@@ -58,20 +60,12 @@ namespace VisualNovel
             CheckContent();
         }
 
-        public void Execute()
+        public (GodotObject, StringName) Execute()
         {
             var dm = DialogueManager.Instance;
             dm.SpeakerNameLabel.Text = SpeakerName;
-            Action wrapper = null;
-            wrapper = () => 
-            {
-               //dm.typeWriter.OnComplete -= wrapper; // 自我销毁，清理干净
-                //CompletionCallback?.Invoke();        // 执行真正的逻辑
-            };
-
-                // 3. 这里的逻辑就像你最初想写的那样
-            //dm.typeWriter.OnComplete += wrapper;
             dm.typeWriter.TypeText(SpeakContext);
+            return (dm.typeWriter, TypeWriter.SignalName.OnComplete);
         }
 
         public void Interrupt()
@@ -122,7 +116,7 @@ namespace VisualNovel
             this.immediate = immediate;
         }
 
-        public void Execute()
+        public (GodotObject, StringName) Execute()
         {
             var dm = DialogueManager.Instance;
             if (dm.SceneActiveTextures.TryGetValue(ID, out var targetRef))
@@ -133,19 +127,20 @@ namespace VisualNovel
                         targetRef.SetTextureOrdered(path: targetTexturePath, setType: translationType, duration: fadeDuration, zIndex : ID);
                         break;
                     case TextureMode.Clear:
-                        targetRef.DeleteTextureOrdered(fadeDuration, immediate: immediate);
+                        targetRef.SetTextureOrdered(path: null, setType: VNTextureController.TranslationType.CrossFade, zIndex : ID);
                         break;
                     case TextureMode.Delete:
                         dm.SceneActiveTextures.Remove(ID);
-                        targetRef.DeleteTextureOrdered(fadeDuration, deleteAfterFade: true, immediate: immediate);
+                        targetRef.DeleteTexture();
                         break;
                 }
+                return (targetRef, TypeWriter.SignalName.OnComplete);
             }
             else
             {
-                if (textureMode == TextureMode.Delete || textureMode == TextureMode.Clear) return;
+                if (textureMode == TextureMode.Delete || textureMode == TextureMode.Clear) return default;
                 dm.CreateTextureRect(ID, fadeDuration, defaultTexPath: targetTexturePath);
-                Execute();
+                return Execute();
             }
         }
 
@@ -169,11 +164,11 @@ namespace VisualNovel
                         targetRef.SetTextureOrdered(targetTexturePath, VNTextureController.TranslationType.Immediate, zIndex: ID);
                         break;
                     case TextureMode.Clear:
-                        targetRef.DeleteTextureOrdered(immediate: true);
+                        targetRef.SetTextureOrdered(path: null, setType: VNTextureController.TranslationType.CrossFade, zIndex : ID);
                         break;
                     case TextureMode.Delete:
                         dm.SceneActiveTextures.Remove(ID);
-                        targetRef.QueueFree();
+                        targetRef.DeleteTexture();
                         break;
                 }
             }
@@ -197,7 +192,6 @@ namespace VisualNovel
         public float duration;
         public Vector2? targetVector;
         public bool? isRelative;
-        public bool? isLocal;
         public Color? targetColor;
         public float? Alpha = 1;
         public float? RotationDegrees;
@@ -214,7 +208,6 @@ namespace VisualNovel
             bool isParallel =  true,
             Vector2? targetVector = null,
             bool? isRelative = true,
-            bool? isLocal = true,
             Color? targetColor = null,
             float? alpha = 1,
             float? rotationDegrees = 0,
@@ -229,7 +222,6 @@ namespace VisualNovel
             this.duration = duration;
             this.targetVector = targetVector;
             this.isRelative = isRelative;
-            this.isLocal = isLocal;
             this.targetColor = targetColor;
             this.Alpha = alpha;
             this.RotationDegrees = rotationDegrees;
@@ -240,66 +232,71 @@ namespace VisualNovel
             this.isParallel = isParallel;
         }
 
-        public void Execute()
+        public (GodotObject, StringName) Execute()
         {
             var dm = DialogueManager.Instance;
             if (dm.SceneActiveTextures.TryGetValue(ID, out var targetRef))
             {
-            duration = duration <= 0 ? GlobalSettings.AnimationDefaultTime : duration;
-            switch (animationType)
-            {
-                case AnimationType.Move:
-                targetRef.Animator.AddMove(
-                    value: targetVector ?? Vector2.Zero,
-                    duration: duration,
-                    parallel: isParallel,
-                    trans: transitionType,
-                    ease: easeType);
-                break;
-                case AnimationType.Rotate:
-                targetRef.Animator.AddRotate(
-                    degrees: RotationDegrees ?? 0,
-                    duration: duration,
-                    isLocal: isLocal ?? true,
-                    trans: transitionType,
-                    ease: easeType,
-                    parallel: isParallel);
-                break;
-                case AnimationType.Scale:
-                targetRef.Animator.AddScale(
-                    scale: targetVector ?? Vector2.Zero,
-                    duration: duration,
-                    trans: transitionType,
-                    ease: easeType,
-                    parallel: isParallel);
-                break;
-                case AnimationType.Shake:
-                targetRef.Animator.AddShake(
-                    intensity: intensity ?? 5,
-                    duration: duration,
-                    frequency: frequency ?? 10,
-                    trans: transitionType,
-                    ease: easeType,
-                    parallel: isParallel);
-                break;
-                case AnimationType.ColorTint:
-                targetRef.Animator.AddColorTint(
-                    target: targetColor ?? Colors.White,
-                    duration: duration,
-                    trans: transitionType,
-                    ease: easeType,
-                    parallel: isParallel);
-                break;
-                case AnimationType.Fade:
-                targetRef.Animator.AddFade(
-                    alpha: Alpha ?? 1,
-                    duration: duration,
-                    trans: transitionType,
-                    ease: easeType,
-                    parallel: isParallel);
-                break;
+                duration = duration <= 0 ? GlobalSettings.AnimationDefaultTime : duration;
+                switch (animationType)
+                {
+                    case AnimationType.Move:
+                    targetRef.Animator.AddMove(
+                        value: targetVector ?? Vector2.Zero,
+                        duration: duration,
+                        parallel: isParallel,
+                        trans: transitionType,
+                        ease: easeType);
+                    break;
+                    case AnimationType.Rotate:
+                    targetRef.Animator.AddRotate(
+                        degrees: RotationDegrees ?? 0,
+                        duration: duration,
+                        trans: transitionType,
+                        ease: easeType,
+                        parallel: isParallel);
+                    break;
+                    case AnimationType.Scale:
+                    targetRef.Animator.AddScale(
+                        scale: targetVector ?? Vector2.Zero,
+                        duration: duration,
+                        trans: transitionType,
+                        ease: easeType,
+                        parallel: isParallel);
+                    break;
+                    case AnimationType.Shake:
+                    targetRef.Animator.AddShake(
+                        intensity: intensity ?? 5,
+                        duration: duration,
+                        frequency: frequency ?? 10,
+                        trans: transitionType,
+                        ease: easeType,
+                        parallel: isParallel);
+                    break;
+                    case AnimationType.ColorTint:
+                    targetRef.Animator.AddColorTint(
+                        target: targetColor ?? Colors.White,
+                        duration: duration,
+                        trans: transitionType,
+                        ease: easeType,
+                        parallel: isParallel);
+                    break;
+                    case AnimationType.Fade:
+                    targetRef.Animator.AddFade(
+                        alpha: Alpha ?? 1,
+                        duration: duration,
+                        trans: transitionType,
+                        ease: easeType,
+                        parallel: isParallel);
+                    break;
+                    default:
+                    Debugger.PushError($"Unexcepted animation type for TextureAnimationLine with ID {ID}");
+                    break;
+                }
+                return (targetRef, TextureAnimator.SignalName.AnimationComplete);
             }
-            }
+            return default;
+
         }
 
         public void Interrupt()
@@ -321,7 +318,7 @@ namespace VisualNovel
                         targetRef.Animator.AddMoveImmediately(targetVector ?? Vector2.Zero);
                         break;
                     case AnimationType.Rotate:
-                        targetRef.Animator.AddRotateImmediately(RotationDegrees ?? 0, isLocal ?? true);
+                        targetRef.Animator.AddRotateImmediately(RotationDegrees ?? 0);
                         break;
                     case AnimationType.Scale:
                         targetRef.Animator.AddScaleImmediately(targetVector ?? Vector2.Zero);
@@ -337,7 +334,7 @@ namespace VisualNovel
         }
     }
 
-    public struct Audioline : IDialogueCommand
+    /*public struct Audioline : IDialogueCommand
     {
         public enum AudioType { BGM, Voice, SFX }
         public enum AudioPlayType { Play, Stop } 
@@ -366,7 +363,7 @@ namespace VisualNovel
             this.duration = fadeDuration;
         }
 
-        public void Execute()
+        public StringName Execute()
         {
             var am = AudioManager.Instance;
             switch (audioType)
@@ -421,7 +418,7 @@ namespace VisualNovel
                 }
             }
         }
-    }
+    }*/
 
     
 }
