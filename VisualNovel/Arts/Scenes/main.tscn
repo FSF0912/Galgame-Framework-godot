@@ -1,6 +1,7 @@
 [gd_scene format=4 uid="uid://b0dbi2axmu56c"]
 
 [ext_resource type="Script" uid="uid://cq4cnx5k3s7rd" path="res://VisualNovel/Scirpts/GameCore/DialogueManager.cs" id="1_ncjkk"]
+[ext_resource type="Script" uid="uid://4270a6re05tf" path="res://VisualNovel/Scirpts/GameCore/AudioManager.cs" id="1_sja0j"]
 [ext_resource type="FontFile" uid="uid://dhltf2252erdj" path="res://VisualNovel/Arts/Fonts/MiSans-Demibold.ttf" id="2_6jpcp"]
 [ext_resource type="PackedScene" uid="uid://x1d64t42kviu" path="res://VisualNovel/Arts/Scenes/VNTextureController.tscn" id="2_sja0j"]
 [ext_resource type="FontFile" uid="uid://bve6tao483hq3" path="res://VisualNovel/Arts/Fonts/MiSans-Normal.ttf" id="3_sja0j"]
@@ -637,8 +638,12 @@ variation_transform = Transform2D(1, 0.2, 0, 1, 0, 0)
 
 [node name="Root" type="Node2D" unique_id=857564448]
 top_level = true
+script = ExtResource("1_sja0j")
 
-[node name="DialogueUI" type="Control" parent="." unique_id=1740557762 node_paths=PackedStringArray("SpeakerNameLabel", "typeWriter", "TextureContainer")]
+[node name="Camera2D" type="Camera2D" parent="." unique_id=309886083]
+offset = Vector2(960, 540)
+
+[node name="DialogueUI" type="Control" parent="." unique_id=1740557762 node_paths=PackedStringArray("SpeakerNameLabel", "typeWriter", "BackGroundTexture", "TextureContainer")]
 layout_mode = 3
 anchors_preset = 0
 offset_right = 1920.0
@@ -648,13 +653,9 @@ size_flags_vertical = 4
 script = ExtResource("1_ncjkk")
 SpeakerNameLabel = NodePath("DialogueDisplayArea/SpeakerName")
 typeWriter = NodePath("DialogueDisplayArea/RichTextLabel")
+BackGroundTexture = NodePath("TextureContainer/BackGround")
 TextureContainer = NodePath("TextureContainer")
 VNTextureControllerScene = ExtResource("2_sja0j")
-
-[node name="BackGroundTexture" type="TextureRect" parent="DialogueUI" unique_id=95184536]
-layout_mode = 0
-offset_right = 1920.0
-offset_bottom = 1080.0
 
 [node name="TextureContainer" type="Control" parent="DialogueUI" unique_id=1938871933]
 layout_mode = 1
@@ -663,6 +664,13 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+
+[node name="BackGround" parent="DialogueUI/TextureContainer" unique_id=1993900251 instance=ExtResource("2_sja0j")]
+layout_mode = 1
+offset_left = -960.0
+offset_top = -540.0
+offset_right = 960.0
+offset_bottom = 540.0
 
 [node name="DialogueDisplayArea" type="ColorRect" parent="DialogueUI" unique_id=432197791]
 z_index = 10
@@ -712,6 +720,7 @@ offset_right = 1473.0
 offset_bottom = 922.0
 
 [node name="OptionsContainer" type="HBoxContainer" parent="." unique_id=539164417]
+visible = false
 offset_left = 1045.0
 offset_top = 961.0
 offset_right = 1920.0

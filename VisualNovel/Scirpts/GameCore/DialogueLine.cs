@@ -290,7 +290,7 @@ namespace VisualNovel
                         parallel: isParallel);
                     break;
                     default:
-                    Debugger.PushError($"Unexcepted animation type for TextureAnimationLine with ID {ID}");
+                    GD.PushError($"Unsupported animation type for TextureAnimationLine with ID {ID}");
                     break;
                 }
                 return (targetRef, TextureAnimator.SignalName.AnimationComplete);
@@ -303,7 +303,7 @@ namespace VisualNovel
         {
             if (DialogueManager.Instance.SceneActiveTextures.TryGetValue(ID, out var targetRef))
             {
-                targetRef.Animator?.CompleteAnimations();
+                targetRef.Animator?.InterruptAnimations();
             }
         }
 
@@ -334,7 +334,7 @@ namespace VisualNovel
         }
     }
 
-    /*public struct Audioline : IDialogueCommand
+    public struct Audioline : IDialogueCommand
     {
         public enum AudioType { BGM, Voice, SFX }
         public enum AudioPlayType { Play, Stop } 
@@ -342,28 +342,25 @@ namespace VisualNovel
         public AudioType audioType;
         public AudioPlayType audioPlayType;
         public string audioPath;
-        public bool loop = false;
-        public Vector2 normalizedPosition = Vector2.Zero;
+        public float balance = 0f;
         public float voice_volumeDb = 0f;
         public float duration = -1.0f;
 
         public Audioline(AudioType type, AudioPlayType audioPlayType,
         string path,
-        bool loop = false,
-        Vector2 normalizedPosition = default,
+        float balance = 0f,
         float voice_volumeDb = 0f,
         float fadeDuration = -1.0f)
         {
             audioType = type;
             this.audioPlayType = audioPlayType;
             audioPath = path;
-            this.loop = loop;
-            this.normalizedPosition = normalizedPosition;
+            this.balance = balance;
             this.voice_volumeDb = voice_volumeDb;
             this.duration = fadeDuration;
         }
 
-        public StringName Execute()
+        public (GodotObject, StringName) Execute()
         {
             var am = AudioManager.Instance;
             switch (audioType)
@@ -371,7 +368,7 @@ namespace VisualNovel
                 case AudioType.BGM:
                     if (audioPlayType == AudioPlayType.Play)
                     {
-                        am.PlayBGM(audioPath, duration, loop : loop);
+                        am.PlayBGM(audioPath, duration);
                     }
                     else if (audioPlayType == AudioPlayType.Stop)
                     {
@@ -382,7 +379,7 @@ namespace VisualNovel
                 case AudioType.Voice:
                     if (audioPlayType == AudioPlayType.Play)
                     {
-                        am.PlayVoice(audioPath, normalizedPosition, voice_volumeDb);
+                        am.PlayVoice(audioPath, balance, voice_volumeDb);
                     }
                     break;
 
@@ -393,6 +390,8 @@ namespace VisualNovel
                     }
                     break;
             }
+        
+            return default;
         }
 
         public void Interrupt()
@@ -410,7 +409,7 @@ namespace VisualNovel
             {
                 if (audioPlayType == AudioPlayType.Play)
                 {
-                    am.PlayBGM(audioPath, 0, loop);
+                    am.PlayBGM(audioPath, 0f);
                 }
                 else
                 {
@@ -418,7 +417,7 @@ namespace VisualNovel
                 }
             }
         }
-    }*/
+    }
 
     
 }

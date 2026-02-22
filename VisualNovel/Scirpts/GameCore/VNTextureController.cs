@@ -4,30 +4,21 @@ using Godot;
 
 namespace VisualNovel
 {
-    #if false
     /// <summary>
     /// 默认立绘参数
     /// position x阈值：约0-640 y阈值：约50-1000
     /// </summary>
-    public class TextureParams
+    public struct TextureParams
     {
-        public Vector2 position = Vector2.Zero;
+        public Vector2 position = new (960, 540);
         public float rotation_degrees = 0f;
-        public Vector2 size = Vector2.One;
-        //public TextureRect.ExpandModeEnum expandMode = TextureRect.ExpandModeEnum.IgnoreSize;
-        //public TextureRect.StretchModeEnum stretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
-        //public Control.LayoutPreset layoutPreset = Control.LayoutPreset.TopLeft;
+        public Vector2 size = new (100, 100);
 
         public TextureParams(Vector2 position, float rotation_degrees, Vector2 size)
-            //TextureRect.ExpandModeEnum expandMode, TextureRect.StretchModeEnum stretchMode,
-            //Control.LayoutPreset layoutPreset = Control.LayoutPreset.TopLeft
         {
             this.position = position;
             this.rotation_degrees = rotation_degrees;
             this.size = size;
-            //this.expandMode = expandMode;
-            //this.stretchMode = stretchMode;
-            //this.layoutPreset = layoutPreset;
         }
 
         /// <summary>
@@ -58,12 +49,9 @@ namespace VisualNovel
             size: new Vector2(100, 100)
         );
     }
-    #endif
-
-    
 
     [GlobalClass]
-    public partial class VNTextureController : Control, IDialogueProcessable
+    public partial class VNTextureController : Control
     {
         protected record SingleTranslation(string path, TranslationType translationType, float duration, int zIndex);
         public enum TranslationType
@@ -73,8 +61,6 @@ namespace VisualNovel
             FadeOutIn
         };
         [Signal] public delegate void AnimationCompleteEventHandler();
-
-        public StringName CompletionSignal => SignalName.AnimationComplete;
         //texture
         private TextureRect _mainTexRect;
         private TextureRect _fadingRect;
@@ -95,7 +81,16 @@ namespace VisualNovel
         private bool isProcessingQueue;
         private TaskCompletionSource<bool> _current_tcs = null;
 
+        //init params
+        TextureParams _init_TextureParams = TextureParams.DefaultTexture;
+
         public VNTextureController() { }
+
+        /*public VNTextureController(TextureParams init_textureParams, bool isAnimatorEnabled)
+        {
+            _init_TextureParams = init_textureParams;
+            IsAnimatorEnabled = isAnimatorEnabled;
+        }*/
 
         public override void _Ready()
         {
@@ -107,6 +102,9 @@ namespace VisualNovel
                 Animator = new TextureAnimator(this);
                 AddChild(Animator);
             }
+            Position = _init_TextureParams.position;
+            RotationDegrees = _init_TextureParams.rotation_degrees;
+            Size = _init_TextureParams.size;
         }
 
         public override void _ExitTree()
@@ -130,9 +128,12 @@ namespace VisualNovel
 
         private async Task ProcessingTransQueueAsync()
         {
+            var trans = _translationQueue.Dequeue();
+            _currentSetter = trans;
+
             while (_translationQueue.Count > 0)
             {
-                await SetTextureAtOnceAsync(_translationQueue.Dequeue());
+                await SetTextureAtOnceAsync(trans);
             }
             EmitSignal(SignalName.AnimationComplete);
         }

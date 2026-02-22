@@ -10,15 +10,13 @@ namespace VisualNovel
     /// 动画控制器类，作为CrossFadeTextureRect的子节点
     /// </summary>
     [GlobalClass]
-    public partial class TextureAnimator : Node, IDialogueProcessable
+    public partial class TextureAnimator : Node
     {
         /// <summary>
         /// 动画完成信号
         /// </summary>
         /// <param name="count"></param>
         [Signal] public delegate void AnimationCompleteEventHandler();
-
-        public StringName CompletionSignal => SignalName.AnimationComplete;
 
         /// <summary>
         /// 目标TextureRect
@@ -60,6 +58,26 @@ namespace VisualNovel
 
 
         #region Animation/Transform
+        public void AddTransform(TextureParams @params, float duration, bool parallel = true,
+                    Tween.TransitionType trans = Tween.TransitionType.Sine,
+                    Tween.EaseType ease = Tween.EaseType.InOut)
+        {
+            duration = duration <= 0 ? GlobalSettings.AnimationDefaultTime : duration;
+            if (_target.Position != @params.position)
+                AddMove(@params.position, duration, parallel, trans, ease);
+            if (_target.RotationDegrees != @params.rotation_degrees)
+                AddRotate(@params.rotation_degrees, duration, parallel, trans, ease);
+            if (_target.Scale != @params.size)
+                AddScale(@params.size, duration, parallel, trans, ease);
+        }
+
+        public void AddTransformImmediately(TextureParams @params)
+        {
+            AddMoveImmediately(@params.position);
+            AddRotateImmediately(@params.rotation_degrees);
+            AddScaleImmediately(@params.size);
+        }
+
         public void AddMove(Vector2 value, float duration = -1, bool parallel = true,
                     Tween.TransitionType trans = Tween.TransitionType.Sine,
                     Tween.EaseType ease = Tween.EaseType.InOut)
@@ -208,7 +226,7 @@ namespace VisualNovel
         /// <summary>
         /// 立即完成所有动画
         /// </summary>
-        public void CompleteAnimations()
+        public void InterruptAnimations()
         {
             if (animTween != null && animTween.IsValid())
             {

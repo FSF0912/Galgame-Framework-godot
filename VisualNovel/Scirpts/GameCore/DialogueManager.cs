@@ -70,8 +70,7 @@ namespace VisualNovel
 			SceneActiveTextures.Add(-100, BackGroundTexture);
 			SceneActiveTextures.Add(-200, AvatarTexture);
 
-			_am = new AudioManager();
-			AddChild(_am);
+			_am = AudioManager.Instance;
 
 			gameStatus = GameStatus.WaitingForInput;
 			_currentDialogueLine = TestScenario.Get();
@@ -90,11 +89,16 @@ namespace VisualNovel
 			if (gameStatus == GameStatus.BranchChoice || !AllowInput || gameStatus == GameStatus.CutScene)
 				return;
 
-			if (@event.IsActionPressed("ui_accept")) HandleDialogue();
-
-			else if (@event is InputEventMouseButton mouseEvent &&
-				 (mouseEvent.ButtonIndex == MouseButton.Left || mouseEvent.ButtonIndex == MouseButton.WheelDown) &&
-				 mouseEvent.Pressed) HandleDialogue();
+			if (@event.IsActionPressed("ui_accept") 
+				||
+				(@event is InputEventMouseButton mouseEvent &&
+				(mouseEvent.ButtonIndex == MouseButton.Left || mouseEvent.ButtonIndex == MouseButton.WheelDown) &&
+				mouseEvent.Pressed)
+				||
+				(@event is InputEventKey keyEvent && keyEvent.Pressed && !keyEvent.Echo && keyEvent.Keycode == Key.Down)) 
+				{
+					HandleDialogue();
+				}
 
 
 			void HandleDialogue()
@@ -110,11 +114,12 @@ namespace VisualNovel
 
 
 		public VNTextureController CreateTextureRect(int id, float duration = 0f, 
-		Vector2 position = default, float rotation_degrees = 0f, Vector2 scale = default,
+		TextureParams? textureParams = null,
 		string defaultTexPath = null,
 		VNTextureController.TranslationType translationType = VNTextureController.TranslationType.CrossFade)
 		{
 			if (SceneActiveTextures.TryGetValue(id, out VNTextureController value)) return value;
+			if (id == -100 || id == -200) return SceneActiveTextures[id]; // reserved ids for background and avatar
 
 			duration = duration <= 0 ? GlobalSettings.AnimationDefaultTime : duration;
 
@@ -122,9 +127,11 @@ namespace VisualNovel
 			TextureContainer.AddChild(texture);
 			SceneActiveTextures.Add(id, texture);
 
-			texture.Position = position;
-			texture.RotationDegrees = rotation_degrees;
-			texture.Size = scale;
+			if (textureParams == null) textureParams = TextureParams.DefaultTexture;
+			texture.Position = textureParams.Value.position;
+			texture.RotationDegrees = textureParams.Value.rotation_degrees;
+			texture.Size = textureParams.Value.size;
+
 			texture.SetTextureOrdered(defaultTexPath, translationType, duration);
 			return texture;
 		}

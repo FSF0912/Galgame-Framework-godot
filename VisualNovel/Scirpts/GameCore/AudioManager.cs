@@ -8,8 +8,6 @@ namespace VisualNovel
     {
         public static AudioManager Instance { get; private set; }
         [Signal] public delegate void VoiceCompleteEventHandler();
-
-        // 1. 严格使用常量，确保所有方法都引用它们
         private const string MASTER_BUS = "Master";
         private const string BGM_BUS = "BGM";
         private const string SFX_BUS = "SFX";
@@ -19,7 +17,6 @@ namespace VisualNovel
         private AudioStreamPlayer2D _voicePlayer;
         private Tween _bgmTween;
 
-        // 声道偏移强度
         private const float PAN_SPREAD_DISTANCE = 600f;
 
         [ExportGroup("Volume Settings")]
@@ -35,11 +32,9 @@ namespace VisualNovel
             if (Instance != null && Instance != this) { QueueFree(); return; }
             Instance = this;
 
-            // BGM 初始化
             _bgmPlayer = new AudioStreamPlayer { Name = "BGMPlayer", Bus = BGM_BUS };
             AddChild(_bgmPlayer);
 
-            // Voice 初始化 (2D 节点模拟 Balance)
             _voicePlayer = new AudioStreamPlayer2D { 
                 Name = "VoicePlayer", 
                 Bus = VOICE_BUS,
@@ -50,7 +45,6 @@ namespace VisualNovel
             AddChild(_voicePlayer);
             _voicePlayer.Finished += () => EmitSignal(SignalName.VoiceComplete);
 
-            // 应用音量（这里会用到所有常量，消除 IDE0051）
             ApplyVolumes();
         }
 
@@ -68,7 +62,6 @@ namespace VisualNovel
             if (index != -1) AudioServer.SetBusVolumeDb(index, db);
         }
 
-        // --- SFX 逻辑：即用即弃，无对象池 ---
         public void PlaySFX(string resourcePath, float volumeOffset = 0f, float pitchScale = 1f)
         {
             var stream = GD.Load<AudioStream>(resourcePath);
@@ -76,22 +69,23 @@ namespace VisualNovel
 
             var sfxPlayer = new AudioStreamPlayer {
                 Stream = stream,
-                Bus = SFX_BUS, // 使用了常量
+                Bus = SFX_BUS,
                 VolumeDb = volumeOffset,
                 PitchScale = pitchScale
             };
 
-            sfxPlayer.Finished += () => sfxPlayer.QueueFree();
+            sfxPlayer.Finished += sfxPlayer.QueueFree;
             AddChild(sfxPlayer);
             sfxPlayer.Play();
         }
 
-        // --- Voice 逻辑：支持 Balance ---
+        //set audio loop in AudioStream resource.
         public void PlayVoice(string resourcePath, float balance = 0f, float volumeOffset = 0f)
         {
             if (_voicePlayer.Playing) _voicePlayer.Stop();
 
             var stream = GD.Load<AudioStream>(resourcePath);
+            
             if (stream == null) return;
 
             // 根据 balance 计算位置，实现声道偏移
@@ -103,10 +97,15 @@ namespace VisualNovel
             _voicePlayer.Play();
         }
 
-        // --- BGM 逻辑 ---
+        public void StopVoice()
+        {
+            if (_voicePlayer.Playing) _voicePlayer.Stop();
+        }
+
         public void PlayBGM(string resourcePath, float fadeDuration = 1.0f)
         {
-            if (_currentBgmPath == resourcePath && _bgmPlayer.Playing) return;
+            if (_currentBgmPath == resourcePath) return;
+            if (_bgmPlayer.Playing) StopBGM(fadeDuration, () => PlayBGM(resourcePath, fadeDuration));
 
             var stream = GD.Load<AudioStream>(resourcePath);
             if (stream == null) return;
@@ -122,12 +121,17 @@ namespace VisualNovel
             _bgmTween.TweenProperty(_bgmPlayer, "volume_db", 0f, fadeDuration);
         }
 
-        public void StopBGM(float fadeDuration = 1.0f)
+        public void StopBGM(float fadeDuration = 1.0f, Action callback = null)
         {
             if (_bgmTween != null && _bgmTween.IsValid()) _bgmTween.Kill();
             _bgmTween = CreateTween();
             _bgmTween.TweenProperty(_bgmPlayer, "volume_db", -80f, fadeDuration);
-            _bgmTween.TweenCallback(Callable.From(() => { _bgmPlayer.Stop(); _currentBgmPath = string.Empty; }));
+            _bgmTween.TweenCallback(Callable.From(() => 
+            { 
+                _bgmPlayer.Stop(); 
+                _currentBgmPath = string.Empty; 
+                callback?.Invoke();     
+            }));
         }
     }
 }
